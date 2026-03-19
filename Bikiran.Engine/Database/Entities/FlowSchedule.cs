@@ -33,6 +33,7 @@ public class FlowSchedule
 
     public int? IntervalMinutes { get; set; }
     public long? RunOnceAt { get; set; }
+    [Required]
     public string DefaultParameters { get; set; } = "{}";
     public bool IsActive { get; set; } = true;
 
