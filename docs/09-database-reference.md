@@ -1,35 +1,37 @@
-# Database Schema
+# Database Reference
 
-This document describes all database tables used by Bikiran.Engine across its features.
+Bikiran.Engine manages its own database tables independently from your application. The engine uses an internal `EngineDbContext` — your application's `DbContext` is never modified.
+
+All tables are created automatically on first startup and updated automatically when the NuGet package is updated.
 
 ---
 
-## Tables at a Glance
+## Tables Overview
 
-| Table                | Purpose                                             | Introduced In    |
-| -------------------- | --------------------------------------------------- | ---------------- |
-| `FlowRun`            | Tracks each workflow execution                      | Core Engine      |
-| `FlowNodeLog`        | Records each node's execution within a run          | Core Engine      |
-| `FlowDefinition`     | Stores reusable flow templates as JSON              | Flow Definitions |
-| `FlowDefinitionRun`  | Links a FlowRun to the definition that triggered it | Flow Definitions |
-| `FlowSchedule`       | Defines scheduled triggers for flow definitions     | Scheduling       |
-| `EngineSchemaVersion`| Tracks the current database schema version          | Auto-Migration   |
+| Table                 | Purpose                                         |
+| --------------------- | ----------------------------------------------- |
+| `FlowRun`             | Tracks each workflow execution                  |
+| `FlowNodeLog`         | Records each node's execution within a run      |
+| `FlowDefinition`      | Stores reusable flow templates as JSON          |
+| `FlowDefinitionRun`   | Links a run to the definition that triggered it |
+| `FlowSchedule`        | Defines automated triggers for flow definitions |
+| `EngineSchemaVersion` | Tracks the current database schema version      |
 
 ---
 
 ## FlowRun
 
-Tracks each workflow execution from start to finish.
+Stores one record per workflow execution.
 
 | Column           | Type         | Default     | Description                                                  |
 | ---------------- | ------------ | ----------- | ------------------------------------------------------------ |
 | `Id`             | BIGINT (PK)  | auto        | Primary key                                                  |
-| `ServiceId`      | CHAR(36)     | —           | UUID run identifier                                          |
-| `FlowName`       | VARCHAR(100) | —           | Human-readable flow name                                     |
+| `ServiceId`      | CHAR(36)     | —           | Unique run identifier (UUID)                                 |
+| `FlowName`       | VARCHAR(100) | —           | Flow name                                                    |
 | `Status`         | VARCHAR(20)  | `"pending"` | `pending` / `running` / `completed` / `failed` / `cancelled` |
-| `TriggerSource`  | VARCHAR(100) | `""`        | Where the flow was triggered from (e.g., controller name)    |
-| `Config`         | TEXT         | `"{}"`      | JSON-serialized `FlowRunConfig`                              |
-| `ContextMeta`    | TEXT         | `"{}"`      | JSON snapshot of caller context (IP, user ID, request path)  |
+| `TriggerSource`  | VARCHAR(100) | `""`        | Where the flow was triggered from                            |
+| `Config`         | TEXT         | `"{}"`      | JSON-serialized runtime configuration                        |
+| `ContextMeta`    | TEXT         | `"{}"`      | JSON snapshot of caller context (IP, user ID, path)          |
 | `TotalNodes`     | INT          | `0`         | Total number of nodes in the flow                            |
 | `CompletedNodes` | INT          | `0`         | Number of nodes completed so far                             |
 | `ErrorMessage`   | VARCHAR(500) | NULL        | Error details if the flow failed                             |
@@ -41,8 +43,6 @@ Tracks each workflow execution from start to finish.
 | `TimeCreated`    | BIGINT       | —           | Record creation timestamp                                    |
 | `TimeUpdated`    | BIGINT       | —           | Last update timestamp                                        |
 | `TimeDeleted`    | BIGINT       | `0`         | Soft-delete timestamp (0 = active)                           |
-
-**SQL:**
 
 ```sql
 CREATE TABLE FlowRun (
@@ -71,13 +71,13 @@ CREATE TABLE FlowRun (
 
 ## FlowNodeLog
 
-Records one node's execution within a FlowRun. One row per node per run.
+Stores one record per node execution within a run.
 
 | Column         | Type         | Default     | Description                                                |
 | -------------- | ------------ | ----------- | ---------------------------------------------------------- |
 | `Id`           | BIGINT (PK)  | auto        | Primary key                                                |
 | `ServiceId`    | CHAR(36)     | —           | References `FlowRun.ServiceId`                             |
-| `NodeName`     | VARCHAR(100) | —           | Node name (lowercase_underscore)                           |
+| `NodeName`     | VARCHAR(100) | —           | Node name                                                  |
 | `NodeType`     | VARCHAR(50)  | —           | Type label (`HttpRequest`, `IfElse`, `Wait`, etc.)         |
 | `Sequence`     | INT          | —           | 1-based execution order                                    |
 | `Status`       | VARCHAR(20)  | `"pending"` | `pending` / `running` / `completed` / `failed` / `skipped` |
@@ -86,13 +86,11 @@ Records one node's execution within a FlowRun. One row per node per run.
 | `ErrorMessage` | VARCHAR(500) | NULL        | Error details if the node failed                           |
 | `BranchTaken`  | VARCHAR(20)  | NULL        | `"true"` or `"false"` for IfElse nodes                     |
 | `RetryCount`   | INT          | `0`         | Number of retries attempted                                |
-| `StartedAt`    | BIGINT       | `0`         | Unix timestamp when node started                           |
-| `CompletedAt`  | BIGINT       | `0`         | Unix timestamp when node finished                          |
-| `DurationMs`   | BIGINT       | `0`         | Node execution time in milliseconds                        |
+| `StartedAt`    | BIGINT       | `0`         | Unix timestamp when the node started                       |
+| `CompletedAt`  | BIGINT       | `0`         | Unix timestamp when the node finished                      |
+| `DurationMs`   | BIGINT       | `0`         | Execution time in milliseconds                             |
 | `TimeCreated`  | BIGINT       | —           | Record creation timestamp                                  |
 | `TimeUpdated`  | BIGINT       | —           | Last update timestamp                                      |
-
-**SQL:**
 
 ```sql
 CREATE TABLE FlowNodeLog (
@@ -119,26 +117,24 @@ CREATE TABLE FlowNodeLog (
 
 ## FlowDefinition
 
-Stores reusable flow templates as structured JSON. Admins can create and update definitions without code changes.
+Stores reusable flow templates as JSON.
 
 | Column           | Type         | Default | Description                                 |
 | ---------------- | ------------ | ------- | ------------------------------------------- |
 | `Id`             | BIGINT (PK)  | auto    | Primary key                                 |
 | `DefinitionKey`  | VARCHAR(100) | —       | Unique slug (e.g., `"order_notification"`)  |
-| `DisplayName`    | VARCHAR(200) | —       | Human-readable label for admin UI           |
+| `DisplayName`    | VARCHAR(200) | —       | Human-readable label                        |
 | `Description`    | TEXT         | `""`    | Optional description                        |
 | `Version`        | INT          | `1`     | Incremented on each save                    |
 | `IsActive`       | TINYINT(1)   | `1`     | Whether this definition can be triggered    |
 | `FlowJson`       | MEDIUMTEXT   | `"{}"`  | JSON body describing the flow and its nodes |
-| `Tags`           | VARCHAR(500) | `""`    | Comma-separated tags for categorization     |
+| `Tags`           | VARCHAR(500) | `""`    | Comma-separated tags                        |
 | `LastModifiedBy` | BIGINT       | `0`     | User ID of last editor                      |
 | `TimeCreated`    | BIGINT       | —       | Record creation timestamp                   |
 | `TimeUpdated`    | BIGINT       | —       | Last update timestamp                       |
 | `TimeDeleted`    | BIGINT       | `0`     | Soft-delete timestamp                       |
 
 **Unique constraint:** `(DefinitionKey, Version)` — each key can have multiple versions.
-
-**SQL:**
 
 ```sql
 CREATE TABLE FlowDefinition (
@@ -162,21 +158,19 @@ CREATE TABLE FlowDefinition (
 
 ## FlowDefinitionRun
 
-Links a FlowRun to the definition and parameters that triggered it.
+Links a flow run to the definition and parameters that triggered it.
 
-| Column              | Type         | Default | Description                                         |
-| ------------------- | ------------ | ------- | --------------------------------------------------- |
-| `Id`                | BIGINT (PK)  | auto    | Primary key                                         |
-| `FlowRunServiceId`  | CHAR(36)     | —       | References `FlowRun.ServiceId`                      |
-| `DefinitionId`      | BIGINT       | —       | References `FlowDefinition.Id`                      |
-| `DefinitionKey`     | VARCHAR(100) | —       | The definition key used                             |
-| `DefinitionVersion` | INT          | —       | The version of the definition at trigger time       |
-| `Parameters`        | TEXT         | `"{}"`  | JSON of runtime parameters supplied at trigger time |
-| `TriggerUserId`     | BIGINT       | `0`     | User who triggered the run                          |
-| `TriggerSource`     | VARCHAR(100) | `""`    | Source label (e.g., controller name)                |
-| `TimeCreated`       | BIGINT       | —       | Record creation timestamp                           |
-
-**SQL:**
+| Column              | Type         | Default | Description                               |
+| ------------------- | ------------ | ------- | ----------------------------------------- |
+| `Id`                | BIGINT (PK)  | auto    | Primary key                               |
+| `FlowRunServiceId`  | CHAR(36)     | —       | References `FlowRun.ServiceId`            |
+| `DefinitionId`      | BIGINT       | —       | References `FlowDefinition.Id`            |
+| `DefinitionKey`     | VARCHAR(100) | —       | The definition key used                   |
+| `DefinitionVersion` | INT          | —       | Version of the definition at trigger time |
+| `Parameters`        | TEXT         | `"{}"`  | JSON of runtime parameters                |
+| `TriggerUserId`     | BIGINT       | `0`     | User who triggered the run                |
+| `TriggerSource`     | VARCHAR(100) | `""`    | Source label                              |
+| `TimeCreated`       | BIGINT       | —       | Record creation timestamp                 |
 
 ```sql
 CREATE TABLE FlowDefinitionRun (
@@ -196,7 +190,7 @@ CREATE TABLE FlowDefinitionRun (
 
 ## FlowSchedule
 
-Defines automated triggers for flow definitions using cron, interval, or one-time schedules.
+Defines automated triggers for flow definitions.
 
 | Column              | Type         | Default | Description                                    |
 | ------------------- | ------------ | ------- | ---------------------------------------------- |
@@ -208,11 +202,11 @@ Defines automated triggers for flow definitions using cron, interval, or one-tim
 | `CronExpression`    | VARCHAR(100) | NULL    | Quartz cron expression (for cron type)         |
 | `IntervalMinutes`   | INT          | NULL    | Repeat interval in minutes (for interval type) |
 | `RunOnceAt`         | BIGINT       | NULL    | Unix timestamp for one-time execution          |
-| `DefaultParameters` | TEXT         | `"{}"`  | JSON parameters passed to the flow on trigger  |
+| `DefaultParameters` | TEXT         | `"{}"`  | JSON parameters passed on trigger              |
 | `IsActive`          | TINYINT(1)   | `1`     | Whether the schedule is enabled                |
-| `TimeZone`          | VARCHAR(50)  | `"UTC"` | IANA timezone ID for cron evaluation           |
-| `MaxConcurrent`     | INT          | `1`     | Max concurrent runs (1 = no overlap)           |
-| `LastRunAt`         | BIGINT       | `0`     | Unix timestamp of most recent trigger          |
+| `TimeZone`          | VARCHAR(50)  | `"UTC"` | IANA timezone ID                               |
+| `MaxConcurrent`     | INT          | `1`     | Maximum concurrent runs (1 = no overlap)       |
+| `LastRunAt`         | BIGINT       | `0`     | Most recent trigger timestamp                  |
 | `NextRunAt`         | BIGINT       | `0`     | Expected next trigger time                     |
 | `LastRunServiceId`  | CHAR(36)     | NULL    | ServiceId of the most recent run               |
 | `LastRunStatus`     | VARCHAR(20)  | NULL    | Status of the most recent run                  |
@@ -220,8 +214,6 @@ Defines automated triggers for flow definitions using cron, interval, or one-tim
 | `TimeCreated`       | BIGINT       | —       | Record creation timestamp                      |
 | `TimeUpdated`       | BIGINT       | —       | Last update timestamp                          |
 | `TimeDeleted`       | BIGINT       | `0`     | Soft-delete timestamp                          |
-
-**SQL:**
 
 ```sql
 CREATE TABLE FlowSchedule (
@@ -252,16 +244,14 @@ CREATE TABLE FlowSchedule (
 
 ## EngineSchemaVersion
 
-Tracks the current database schema version. Used by the auto-migration system to detect and apply schema changes when the NuGet package is updated.
+A single-row table that tracks the current database schema version. Used by the auto-migration system to detect and apply changes when the NuGet package is updated.
 
-| Column           | Type         | Default | Description                                      |
-| ---------------- | ------------ | ------- | ------------------------------------------------ |
-| `Id`             | INT (PK)     | `1`     | Always 1 (singleton row)                         |
-| `SchemaVersion`  | VARCHAR(20)  | —       | Current schema version (matches package version) |
-| `AppliedAt`      | BIGINT       | —       | Unix timestamp of last migration                 |
-| `PackageVersion` | VARCHAR(20)  | —       | NuGet package version that applied the migration |
-
-**SQL:**
+| Column           | Type        | Default | Description                                      |
+| ---------------- | ----------- | ------- | ------------------------------------------------ |
+| `Id`             | INT (PK)    | `1`     | Always 1 (single row)                            |
+| `SchemaVersion`  | VARCHAR(20) | —       | Current schema version                           |
+| `AppliedAt`      | BIGINT      | —       | Unix timestamp of last migration                 |
+| `PackageVersion` | VARCHAR(20) | —       | NuGet package version that applied the migration |
 
 ```sql
 CREATE TABLE EngineSchemaVersion (
@@ -275,17 +265,36 @@ CREATE TABLE EngineSchemaVersion (
 
 ---
 
+## Auto-Migration
+
+The engine manages its own database schema without requiring manual migrations.
+
+**How it works:**
+
+1. On startup, the engine checks for the `EngineSchemaVersion` table.
+2. If it does not exist, all tables are created from scratch.
+3. If it exists, the stored version is compared with the package's expected version.
+4. If there is a mismatch, incremental migration scripts are applied.
+5. The `EngineSchemaVersion` record is updated.
+
+**What this means for you:**
+
+- You never run `dotnet ef migrations add` for engine tables
+- Your application's `DbContext` is not modified
+- Updating the NuGet package automatically updates the schema on next startup
+- The engine reuses your application's database connection string
+
+---
+
 ## EF Core Entity Classes
 
-Each table has a corresponding C# entity class managed by the engine's internal `EngineDbContext`. These live in the `Database/Entities/` folder.
+Each table has a corresponding C# entity class in the package:
 
-| Table                | C# Entity File                              |
-| -------------------- | ------------------------------------------- |
-| `FlowRun`            | `Database/Entities/FlowRun.cs`              |
-| `FlowNodeLog`        | `Database/Entities/FlowNodeLog.cs`          |
-| `FlowDefinition`     | `Database/Entities/FlowDefinition.cs`       |
-| `FlowDefinitionRun`  | `Database/Entities/FlowDefinitionRun.cs`    |
-| `FlowSchedule`       | `Database/Entities/FlowSchedule.cs`         |
-| `EngineSchemaVersion`| `Database/Entities/EngineSchemaVersion.cs`  |
-
-All tables are managed internally by the package. The engine uses its own `EngineDbContext` — developers do not need to register `DbSet` entries in their application's `DbContext`.
+| Table                 | Entity Class                               |
+| --------------------- | ------------------------------------------ |
+| `FlowRun`             | `Database/Entities/FlowRun.cs`             |
+| `FlowNodeLog`         | `Database/Entities/FlowNodeLog.cs`         |
+| `FlowDefinition`      | `Database/Entities/FlowDefinition.cs`      |
+| `FlowDefinitionRun`   | `Database/Entities/FlowDefinitionRun.cs`   |
+| `FlowSchedule`        | `Database/Entities/FlowSchedule.cs`        |
+| `EngineSchemaVersion` | `Database/Entities/EngineSchemaVersion.cs` |

@@ -1,10 +1,10 @@
-# Usage Examples
+# Examples
 
-This document provides practical, ready-to-use examples covering common workflow patterns.
+This document provides practical, ready-to-use code examples for common workflow patterns.
 
 ---
 
-## Basic Flow: HTTP Request + Email
+## Simple HTTP Request and Email
 
 Fetch data from an API and send a notification email:
 
@@ -38,9 +38,9 @@ var serviceId = await FlowBuilder
 
 ---
 
-## Database Query + Conditional Branching
+## Database Lookup with Conditional Branching
 
-Load a record from the database and branch based on whether it exists:
+Load a record from the database and do different things based on whether it exists:
 
 ```csharp
 var serviceId = await FlowBuilder
@@ -53,7 +53,9 @@ var serviceId = await FlowBuilder
         FailIfNull = false
     })
     .AddNode(new IfElseNode("user_exists_check") {
-        Condition = ctx => ctx.Has("existing_user") && ctx.Get<UserProfile>("existing_user") != null,
+        Condition = ctx =>
+            ctx.Has("existing_user") &&
+            ctx.Get<UserProfile>("existing_user") != null,
         TrueBranch = [
             new TransformNode("use_existing_user") {
                 Transform = ctx => ctx.Get<UserProfile>("existing_user")!.Id,
@@ -61,7 +63,6 @@ var serviceId = await FlowBuilder
             }
         ],
         FalseBranch = [
-            // Handle user not found — perhaps create one or send an error
             new WaitNode("placeholder") { DelayMs = 100 }
         ]
     })
@@ -70,9 +71,9 @@ var serviceId = await FlowBuilder
 
 ---
 
-## Database Query + Transform + Email
+## Database Query, Transform, and Email
 
-Load a subscription, build a message, and send an email:
+Load a subscription, build a message from it, and send an email:
 
 ```csharp
 var serviceId = await FlowBuilder
@@ -104,9 +105,9 @@ var serviceId = await FlowBuilder
 
 ---
 
-## Retry Wrapping a Flaky HTTP Call
+## Retry with Exponential Backoff
 
-Wrap an HTTP request with exponential backoff retry:
+Wrap an unreliable HTTP call with automatic retries and exponential backoff:
 
 ```csharp
 .AddNode(new RetryNode("retry_payment_verify") {
@@ -118,16 +119,16 @@ Wrap an HTTP request with exponential backoff retry:
     },
     MaxAttempts = 4,
     DelayMs = 3000,
-    BackoffMultiplier = 2.0,   // 3s → 6s → 12s
+    BackoffMultiplier = 2.0,   // delays: 3s → 6s → 12s
     RetryOn = result => !result.Success
 })
 ```
 
 ---
 
-## Parallel Notification (Email + HTTP Webhook)
+## Parallel Notifications
 
-Send notifications through multiple channels simultaneously:
+Send notifications through multiple channels at the same time:
 
 ```csharp
 .AddNode(new ParallelNode("multi_channel_notify") {
@@ -145,13 +146,13 @@ Send notifications through multiple channels simultaneously:
             Body = $"{{\"invoiceId\": \"{invoiceId}\", \"status\": \"paid\"}}"
         }]
     ],
-    AbortOnBranchFailure = false  // Don't fail the flow if one channel is down
+    AbortOnBranchFailure = false
 })
 ```
 
 ---
 
-## DB-Stored Flow Definition (Admin API)
+## JSON Flow Definition via Admin API
 
 ### Create the Definition
 
@@ -186,10 +187,12 @@ var serviceId = await _definitionRunner.TriggerAsync(
 
 ---
 
-## Scheduled Daily Report (Cron)
+## Scheduled Daily Report
 
 ```http
 POST /api/bikiran-engine/schedules
+Content-Type: application/json
+
 {
   "scheduleKey": "daily_subscription_expiry_report",
   "displayName": "Daily Subscription Expiry Email",
@@ -206,10 +209,12 @@ POST /api/bikiran-engine/schedules
 
 ---
 
-## Scheduled Health Check (Interval)
+## Scheduled Health Check
 
 ```http
 POST /api/bikiran-engine/schedules
+Content-Type: application/json
+
 {
   "scheduleKey": "api_health_check",
   "displayName": "API Health Check",
@@ -222,7 +227,9 @@ POST /api/bikiran-engine/schedules
 
 ---
 
-## One-Time Delayed Welcome (Programmatic)
+## One-Time Delayed Task
+
+Schedule a welcome email to go out 24 hours after signup:
 
 ```csharp
 var oneDayFromNow = DateTimeOffset.UtcNow.AddDays(1).ToUnixTimeSeconds();
@@ -248,9 +255,9 @@ await _schedulerService.RegisterScheduleAsync(schedule);
 
 ---
 
-## Integration Test Flow
+## End-to-End Test Flow
 
-A complete flow for end-to-end testing:
+A complete flow for testing that the engine works correctly in your application:
 
 ```csharp
 [HttpGet("test-flow")]
@@ -285,3 +292,5 @@ public async Task<ActionResult> TestFlow()
     return Ok(new { serviceId });
 }
 ```
+
+After running this endpoint, check the admin API at `/api/bikiran-engine/runs/{serviceId}` to see the full execution details.
