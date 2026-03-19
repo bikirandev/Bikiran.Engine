@@ -78,7 +78,7 @@ Here is what happens internally when `StartAsync()` is called:
 ```
 StartAsync()
   │
-  ├─ Generate a 32-character ServiceId
+  ├─ Generate a UUID ServiceId
   ├─ Save a FlowRun record (status = pending, TotalNodes = N)
   ├─ Fire Task.Run(ExecuteFlowAsync)   ← background, non-blocking
   └─ Return ServiceId

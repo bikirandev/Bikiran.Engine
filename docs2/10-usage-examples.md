@@ -71,9 +71,9 @@ var serviceId = await FlowBuilder
 
 ---
 
-## Database Query + Transform + SMS
+## Database Query + Transform + Email
 
-Load a subscription, build a message, and send an SMS:
+Load a subscription, build a message, and send an email:
 
 ```csharp
 var serviceId = await FlowBuilder
@@ -87,17 +87,17 @@ var serviceId = await FlowBuilder
         FailIfNull = true,
         NullErrorMessage = "Subscription not found"
     })
-    .AddNode(new TransformNode("build_sms_text") {
+    .AddNode(new TransformNode("build_message") {
         Transform = ctx => {
             var sub = ctx.Get<Subscription>("subscription");
             return $"Your subscription #{sub?.Id} is active until {sub?.ExpiryDate}.";
         },
-        OutputKey = "sms_message"
+        OutputKey = "reminder_message"
     })
-    .AddNode(new SmsNode("notify_via_sms") {
-        ToPhone = "+8801712345678",
-        MessageResolver = ctx => ctx.Get<string>("sms_message") ?? "",
-        MaxRetries = 2
+    .AddNode(new EmailSendNode("send_reminder") {
+        ToEmail = userEmail,
+        Subject = "Subscription Reminder",
+        HtmlBody = ctx => $"<p>{ctx.Get<string>("reminder_message")}</p>"
     })
     .StartAsync();
 ```
@@ -125,9 +125,9 @@ Wrap an HTTP request with exponential backoff retry:
 
 ---
 
-## Parallel Notification (Email + SMS + Push)
+## Parallel Notification (Email + HTTP Webhook)
 
-Send notifications through three channels simultaneously:
+Send notifications through multiple channels simultaneously:
 
 ```csharp
 .AddNode(new ParallelNode("multi_channel_notify") {
@@ -136,22 +136,13 @@ Send notifications through three channels simultaneously:
         [new EmailSendNode("email_notify") {
             ToEmail = userEmail,
             Subject = "Payment Confirmed",
-            Template = "PAYMENT_VERIFIED"
+            HtmlBody = "<h1>Payment Confirmed</h1><p>Your invoice has been paid.</p>"
         }],
-        // Branch 2: SMS
-        [new SmsNode("sms_notify") {
-            ToPhone = userPhone,
-            Message = $"Payment confirmed. Invoice #{invoiceId}."
-        }],
-        // Branch 3: Firebase Push
-        [new NotificationNode("push_notify") {
-            DeviceToken = deviceToken,
-            Title = "Payment Confirmed",
-            Body = $"Invoice #{invoiceId} has been paid.",
-            Data = new() {
-                { "invoiceId", invoiceId.ToString() },
-                { "type", "payment" }
-            }
+        // Branch 2: Webhook
+        [new HttpRequestNode("webhook_notify") {
+            Url = "https://hooks.example.com/notify",
+            Method = HttpMethod.Post,
+            Body = $"{{\"invoiceId\": \"{invoiceId}\", \"status\": \"paid\"}}"
         }]
     ],
     AbortOnBranchFailure = false  // Don't fail the flow if one channel is down
@@ -165,7 +156,7 @@ Send notifications through three channels simultaneously:
 ### Create the Definition
 
 ```http
-POST /admin/flow-runner/definitions
+POST /api/bikiran-engine/definitions
 Content-Type: application/json
 
 {
@@ -199,7 +190,7 @@ var serviceId = await _definitionRunner.TriggerAsync(
 ## Scheduled Daily Report (Cron)
 
 ```http
-POST /admin/flow-runner/schedules
+POST /api/bikiran-engine/schedules
 {
   "scheduleKey": "daily_subscription_expiry_report",
   "displayName": "Daily Subscription Expiry Email",
@@ -219,7 +210,7 @@ POST /admin/flow-runner/schedules
 ## Scheduled Health Check (Interval)
 
 ```http
-POST /admin/flow-runner/schedules
+POST /api/bikiran-engine/schedules
 {
   "scheduleKey": "api_health_check",
   "displayName": "API Health Check",

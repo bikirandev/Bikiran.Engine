@@ -23,7 +23,7 @@ Tracks each workflow execution from start to finish.
 | Column           | Type         | Default     | Description                                                  |
 | ---------------- | ------------ | ----------- | ------------------------------------------------------------ |
 | `Id`             | BIGINT (PK)  | auto        | Primary key                                                  |
-| `ServiceId`      | VARCHAR(32)  | —           | Unique 32-character run identifier                           |
+| `ServiceId`      | CHAR(36)     | —           | UUID run identifier                                          |
 | `FlowName`       | VARCHAR(100) | —           | Human-readable flow name                                     |
 | `Status`         | VARCHAR(20)  | `"pending"` | `pending` / `running` / `completed` / `failed` / `cancelled` |
 | `TriggerSource`  | VARCHAR(100) | `""`        | Where the flow was triggered from (e.g., controller name)    |
@@ -46,7 +46,7 @@ Tracks each workflow execution from start to finish.
 ```sql
 CREATE TABLE FlowRun (
     Id            BIGINT AUTO_INCREMENT PRIMARY KEY,
-    ServiceId     VARCHAR(32)  NOT NULL UNIQUE,
+    ServiceId     CHAR(36)     NOT NULL UNIQUE,
     FlowName      VARCHAR(100) NOT NULL,
     Status        VARCHAR(20)  NOT NULL,
     TriggerSource VARCHAR(100) NOT NULL DEFAULT '',
@@ -75,7 +75,7 @@ Records one node's execution within a FlowRun. One row per node per run.
 | Column         | Type         | Default     | Description                                                |
 | -------------- | ------------ | ----------- | ---------------------------------------------------------- |
 | `Id`           | BIGINT (PK)  | auto        | Primary key                                                |
-| `ServiceId`    | VARCHAR(32)  | —           | References `FlowRun.ServiceId`                             |
+| `ServiceId`    | CHAR(36)     | —           | References `FlowRun.ServiceId`                             |
 | `NodeName`     | VARCHAR(100) | —           | Node name (lowercase_underscore)                           |
 | `NodeType`     | VARCHAR(50)  | —           | Type label (`HttpRequest`, `IfElse`, `Wait`, etc.)         |
 | `Sequence`     | INT          | —           | 1-based execution order                                    |
@@ -96,7 +96,7 @@ Records one node's execution within a FlowRun. One row per node per run.
 ```sql
 CREATE TABLE FlowNodeLog (
     Id          BIGINT AUTO_INCREMENT PRIMARY KEY,
-    ServiceId   VARCHAR(32)  NOT NULL,
+    ServiceId   CHAR(36)     NOT NULL,
     NodeName    VARCHAR(100) NOT NULL,
     NodeType    VARCHAR(50)  NOT NULL,
     Sequence    INT          NOT NULL,
@@ -166,7 +166,7 @@ Links a FlowRun to the definition and parameters that triggered it.
 | Column              | Type         | Default | Description                                         |
 | ------------------- | ------------ | ------- | --------------------------------------------------- |
 | `Id`                | BIGINT (PK)  | auto    | Primary key                                         |
-| `FlowRunServiceId`  | VARCHAR(32)  | —       | References `FlowRun.ServiceId`                      |
+| `FlowRunServiceId`  | CHAR(36)     | —       | References `FlowRun.ServiceId`                      |
 | `DefinitionId`      | BIGINT       | —       | References `FlowDefinition.Id`                      |
 | `DefinitionKey`     | VARCHAR(100) | —       | The definition key used                             |
 | `DefinitionVersion` | INT          | —       | The version of the definition at trigger time       |
@@ -180,7 +180,7 @@ Links a FlowRun to the definition and parameters that triggered it.
 ```sql
 CREATE TABLE FlowDefinitionRun (
     Id              BIGINT AUTO_INCREMENT PRIMARY KEY,
-    FlowRunServiceId VARCHAR(32)  NOT NULL,
+    FlowRunServiceId CHAR(36)     NOT NULL,
     DefinitionId    BIGINT       NOT NULL,
     DefinitionKey   VARCHAR(100) NOT NULL,
     DefinitionVersion INT        NOT NULL,
@@ -213,7 +213,7 @@ Defines automated triggers for flow definitions using cron, interval, or one-tim
 | `MaxConcurrent`     | INT          | `1`     | Max concurrent runs (1 = no overlap)           |
 | `LastRunAt`         | BIGINT       | `0`     | Unix timestamp of most recent trigger          |
 | `NextRunAt`         | BIGINT       | `0`     | Expected next trigger time                     |
-| `LastRunServiceId`  | VARCHAR(32)  | NULL    | ServiceId of the most recent run               |
+| `LastRunServiceId`  | CHAR(36)     | NULL    | ServiceId of the most recent run               |
 | `LastRunStatus`     | VARCHAR(20)  | NULL    | Status of the most recent run                  |
 | `CreatedBy`         | BIGINT       | `0`     | User who created the schedule                  |
 | `TimeCreated`       | BIGINT       | —       | Record creation timestamp                      |
@@ -238,7 +238,7 @@ CREATE TABLE FlowSchedule (
     MaxConcurrent    INT          NOT NULL DEFAULT 1,
     LastRunAt        BIGINT       NOT NULL DEFAULT 0,
     NextRunAt        BIGINT       NOT NULL DEFAULT 0,
-    LastRunServiceId VARCHAR(32)  DEFAULT NULL,
+    LastRunServiceId CHAR(36)     DEFAULT NULL,
     LastRunStatus    VARCHAR(20)  DEFAULT NULL,
     CreatedBy        BIGINT       NOT NULL DEFAULT 0,
     TimeCreated      BIGINT       NOT NULL,

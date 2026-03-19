@@ -81,49 +81,49 @@ The default implementation (`FlowDbLogger`) persists records using `AppDbContext
 
 ### Flow Runs
 
-**Controller:** `ControllersAdm/FlowRunnerAdmController.cs`
-**Route prefix:** `admin/flow-runner`
+**Controller:** `Controllers/BikirianEngineController.cs`
+**Route prefix:** `/api/bikiran-engine`
 
-| Method   | Route                                         | Description                                   |
-| -------- | --------------------------------------------- | --------------------------------------------- |
-| `GET`    | `admin/flow-runner/runs`                      | List all runs (paginated)                     |
-| `GET`    | `admin/flow-runner/runs/{serviceId}`          | Get full details of a run including node logs |
-| `GET`    | `admin/flow-runner/runs/{serviceId}/progress` | Get live progress percentage                  |
-| `GET`    | `admin/flow-runner/runs/status/{status}`      | Filter runs by status                         |
-| `DELETE` | `admin/flow-runner/runs/{serviceId}`          | Soft-delete a run record                      |
+| Method   | Route                                                | Description                                   |
+| -------- | ---------------------------------------------------- | --------------------------------------------- |
+| `GET`    | `/api/bikiran-engine/runs`                           | List all runs (paginated)                     |
+| `GET`    | `/api/bikiran-engine/runs/{serviceId}`               | Get full details of a run including node logs |
+| `GET`    | `/api/bikiran-engine/runs/{serviceId}/progress`      | Get live progress percentage                  |
+| `GET`    | `/api/bikiran-engine/runs/status/{status}`           | Filter runs by status                         |
+| `DELETE` | `/api/bikiran-engine/runs/{serviceId}`               | Soft-delete a run record                      |
 
 ### Flow Definitions
 
-**Controller:** `ControllersAdm/FlowDefinitionAdmController.cs`
-**Route prefix:** `admin/flow-runner/definitions`
+**Controller:** `Controllers/BikirianEngineDefinitionController.cs`
+**Route prefix:** `/api/bikiran-engine/definitions`
 
-| Method   | Route                                          | Description                                 |
-| -------- | ---------------------------------------------- | ------------------------------------------- |
-| `GET`    | `admin/flow-runner/definitions`                | List all definitions (paginated)            |
-| `GET`    | `admin/flow-runner/definitions/{key}`          | Get the latest version of a definition      |
-| `GET`    | `admin/flow-runner/definitions/{key}/versions` | List all versions of a definition           |
-| `POST`   | `admin/flow-runner/definitions`                | Create a new definition                     |
-| `PUT`    | `admin/flow-runner/definitions/{key}`          | Update a definition (creates a new version) |
-| `PATCH`  | `admin/flow-runner/definitions/{key}/toggle`   | Enable or disable a definition              |
-| `DELETE` | `admin/flow-runner/definitions/{key}`          | Soft-delete a definition                    |
-| `POST`   | `admin/flow-runner/definitions/{key}/trigger`  | Manually trigger a definition run           |
-| `GET`    | `admin/flow-runner/definitions/{key}/runs`     | List runs triggered from this definition    |
+| Method   | Route                                                 | Description                                 |
+| -------- | ----------------------------------------------------- | ------------------------------------------- |
+| `GET`    | `/api/bikiran-engine/definitions`                     | List all definitions (paginated)            |
+| `GET`    | `/api/bikiran-engine/definitions/{key}`               | Get the latest version of a definition      |
+| `GET`    | `/api/bikiran-engine/definitions/{key}/versions`      | List all versions of a definition           |
+| `POST`   | `/api/bikiran-engine/definitions`                     | Create a new definition                     |
+| `PUT`    | `/api/bikiran-engine/definitions/{key}`               | Update a definition (creates a new version) |
+| `PATCH`  | `/api/bikiran-engine/definitions/{key}/toggle`        | Enable or disable a definition              |
+| `DELETE` | `/api/bikiran-engine/definitions/{key}`               | Soft-delete a definition                    |
+| `POST`   | `/api/bikiran-engine/definitions/{key}/trigger`       | Manually trigger a definition run           |
+| `GET`    | `/api/bikiran-engine/definitions/{key}/runs`          | List runs triggered from this definition    |
 
 ### Flow Schedules
 
-**Controller:** `ControllersAdm/FlowScheduleAdmController.cs`
-**Route prefix:** `admin/flow-runner/schedules`
+**Controller:** `Controllers/BikirianEngineScheduleController.cs`
+**Route prefix:** `/api/bikiran-engine/schedules`
 
-| Method   | Route                                       | Description                                |
-| -------- | ------------------------------------------- | ------------------------------------------ |
-| `GET`    | `admin/flow-runner/schedules`               | List all schedules                         |
-| `GET`    | `admin/flow-runner/schedules/{key}`         | Get schedule detail with next fire time    |
-| `POST`   | `admin/flow-runner/schedules`               | Create a new schedule                      |
-| `PUT`    | `admin/flow-runner/schedules/{key}`         | Update a schedule (re-registers in Quartz) |
-| `PATCH`  | `admin/flow-runner/schedules/{key}/toggle`  | Enable or disable (pause/resume in Quartz) |
-| `DELETE` | `admin/flow-runner/schedules/{key}`         | Soft-delete and unregister from Quartz     |
-| `POST`   | `admin/flow-runner/schedules/{key}/run-now` | Manually fire the schedule immediately     |
-| `GET`    | `admin/flow-runner/schedules/{key}/runs`    | List runs triggered by this schedule       |
+| Method   | Route                                              | Description                                |
+| -------- | -------------------------------------------------- | ------------------------------------------ |
+| `GET`    | `/api/bikiran-engine/schedules`                    | List all schedules                         |
+| `GET`    | `/api/bikiran-engine/schedules/{key}`              | Get schedule detail with next fire time    |
+| `POST`   | `/api/bikiran-engine/schedules`                    | Create a new schedule                      |
+| `PUT`    | `/api/bikiran-engine/schedules/{key}`              | Update a schedule (re-registers in Quartz) |
+| `PATCH`  | `/api/bikiran-engine/schedules/{key}/toggle`       | Enable or disable (pause/resume in Quartz) |
+| `DELETE` | `/api/bikiran-engine/schedules/{key}`              | Soft-delete and unregister from Quartz     |
+| `POST`   | `/api/bikiran-engine/schedules/{key}/run-now`      | Manually fire the schedule immediately     |
+| `GET`    | `/api/bikiran-engine/schedules/{key}/runs`         | List runs triggered by this schedule       |
 
 ---
 

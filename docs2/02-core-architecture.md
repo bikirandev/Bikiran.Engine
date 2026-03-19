@@ -33,7 +33,7 @@ Flows are **not** stored as persistent definitions by default — they are built
 
 When `FlowBuilder.StartAsync()` is called:
 
-1. A unique 32-character `ServiceId` is generated.
+1. A UUID `ServiceId` is generated.
 2. A `FlowRun` database record is created with status `pending`.
 3. The flow is fired in the background via `Task.Run` — the calling thread is not blocked.
 4. The `ServiceId` is returned immediately to the caller.

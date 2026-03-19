@@ -68,16 +68,6 @@ The `FlowJson` field stores a structured JSON object:
           "Amount": "{{amount}}"
         }
       }
-    },
-    {
-      "type": "Sms",
-      "name": "sms_confirmation",
-      "params": {
-        "toPhone": "{{customerPhone}}",
-        "message": "Order {{orderId}} confirmed. Amount: BDT {{amount}}.",
-        "vendor": "Auto",
-        "maxRetries": 2
-      }
     }
   ]
 }
@@ -98,7 +88,6 @@ The `FlowJson` field stores a structured JSON object:
 | `Wait`        | WaitNode                           |
 | `HttpRequest` | HttpRequestNode                    |
 | `EmailSend`   | EmailSendNode                      |
-| `Sms`         | SmsNode                            |
 | `Transform`   | TransformNode (static values only) |
 
 > **Note:** Nodes that require C# delegates (`IfElseNode`, `WhileLoopNode`, `DatabaseQueryNode`) cannot be expressed in JSON. Use code-defined flows for those.
@@ -128,7 +117,6 @@ The registry maps type strings to factory functions that create `IFlowNode` inst
 ["Wait"]        → WaitNode
 ["HttpRequest"] → HttpRequestNode
 ["EmailSend"]   → EmailSendNode
-["Sms"]         → SmsNode
 ["Transform"]   → TransformNode
 ```
 
@@ -159,7 +147,7 @@ The system intentionally does not support regex evaluation, expression engines, 
 ### From the Admin API
 
 ```http
-POST /admin/flow-runner/definitions/order_notification_flow/trigger
+POST /api/bikiran-engine/definitions/order_notification_flow/trigger
 Content-Type: application/json
 
 {

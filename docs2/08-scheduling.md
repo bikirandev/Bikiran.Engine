@@ -146,7 +146,7 @@ public class FlowSchedulerService
 ### Create a Daily Email Report (Cron)
 
 ```http
-POST /admin/flow-runner/schedules
+POST /api/bikiran-engine/schedules
 {
   "scheduleKey": "daily_subscription_expiry_report",
   "displayName": "Daily Subscription Expiry Email",
@@ -164,7 +164,7 @@ POST /admin/flow-runner/schedules
 ### Create a Health Check Every 15 Minutes (Interval)
 
 ```http
-POST /admin/flow-runner/schedules
+POST /api/bikiran-engine/schedules
 {
   "scheduleKey": "api_health_check",
   "displayName": "API Health Check",

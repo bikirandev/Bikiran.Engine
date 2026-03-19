@@ -66,7 +66,7 @@ Implements `IFlowLogger` using `AppDbContext`. If `DbContext` is null, all metho
 
 This is the core engine. Key responsibilities:
 
-- Generate `ServiceId` using `IdGenerator.Generate32()`
+- Generate `ServiceId` using `Guid.NewGuid().ToString()`
 - Persist initial `FlowRun` record via `IFlowLogger`
 - Fire `Task.Run(ExecuteFlowAsync)` for background execution
 - Handle per-node logging, error handling, and timeout via `CancellationTokenSource`
@@ -124,19 +124,7 @@ Requires `FlowContext.DbContext`. Test by querying a known record.
 
 **Verify:** Query a `UserProfile` row and confirm the `OutputKey` is populated.
 
-### Step 4 — SmsNode
-
-Requires SMS credentials configured (`SMSAPI_SENDER`, `SMSAPI_ID`, `SMSAPI_KEY`).
-
-**Verify:** Send an SMS to a test number.
-
-### Step 5 — NotificationNode
-
-Requires Firebase configured. Test with a known FCM device token.
-
-**Verify:** Receive a push notification on a test device.
-
-### Step 6 — ParallelNode
+### Step 4 — ParallelNode
 
 Implement after all other nodes are stable. Test with 2 branches: one `WaitNode` + one `HttpRequestNode`.
 
@@ -166,7 +154,7 @@ Include helper methods: `GetString()`, `GetInt()`, `GetBool()`, `GetDict()`, `Ge
 
 **Create:** `Services/FlowRunner/FlowDefinitionRunner/NodeDescriptorRegistry.cs`
 
-Map type strings to `IFlowNode` factory functions. Start with: `Wait`, `HttpRequest`, `EmailSend`, `Sms`, `Transform`.
+Map type strings to `IFlowNode` factory functions. Start with: `Wait`, `HttpRequest`, `EmailSend`, `Transform`.
 
 ### Step 5 — Create FlowDefinitionRunner
 
@@ -312,9 +300,7 @@ Services/FlowRunner/
 │   ├── DatabaseQueryNode.cs
 │   ├── TransformNode.cs
 │   ├── RetryNode.cs
-│   ├── ParallelNode.cs
-│   ├── SmsNode.cs
-│   └── NotificationNode.cs
+│   └── ParallelNode.cs
 ├── FlowDefinitionRunner/
 │   ├── FlowDefinitionRunner.cs
 │   ├── NodeDescriptorRegistry.cs
