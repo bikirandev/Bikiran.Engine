@@ -16,7 +16,7 @@ using System.Reflection;
     "nitor multi-step workflows using a fluent API — embedded directly inside your ap" +
     "p."))]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+778aebe9d87690dc5f89c7eaee58db6572b6ba45")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+c536604529ab4a8db4d0e0f7488ffa0df6cee9a1")]
 [assembly: System.Reflection.AssemblyProductAttribute("Bikiran.Engine")]
 [assembly: System.Reflection.AssemblyTitleAttribute("Bikiran.Engine")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
