@@ -46,7 +46,7 @@ Load a record from the database and branch based on whether it exists:
 var serviceId = await FlowBuilder
     .Create("user_lookup_flow")
     .WithContext(ctx => { ctx.DbContext = _context; })
-    .AddNode(new DatabaseQueryNode("find_user") {
+    .AddNode(new DatabaseQueryNode<AppDbContext>("find_user") {
         Query = async (db, ct) => await db.UserProfile
             .FirstOrDefaultAsync(u => u.Email == email && u.TimeDeleted == 0, ct),
         OutputKey = "existing_user",
@@ -78,7 +78,7 @@ Load a subscription, build a message, and send an email:
 var serviceId = await FlowBuilder
     .Create("subscription_reminder")
     .WithContext(ctx => { ctx.DbContext = _context; })
-    .AddNode(new DatabaseQueryNode("fetch_subscription") {
+    .AddNode(new DatabaseQueryNode<AppDbContext>("fetch_subscription") {
         Query = async (db, ct) => await db.Subscription
             .Where(s => s.Id == subscriptionId && s.TimeDeleted == 0)
             .FirstOrDefaultAsync(ct),
@@ -96,7 +96,8 @@ var serviceId = await FlowBuilder
     .AddNode(new EmailSendNode("send_reminder") {
         ToEmail = userEmail,
         Subject = "Subscription Reminder",
-        HtmlBody = ctx => $"<p>{ctx.Get<string>("reminder_message")}</p>"
+        HtmlBodyResolver = ctx =>
+            $"<p>{ctx.Get<string>("reminder_message")}</p>"
     })
     .StartAsync();
 ```

@@ -245,17 +245,17 @@ public class FlowScheduleSummaryDTO
 ## File Structure
 
 ```
-Services/FlowRunner/Scheduling/
+Scheduling/
 ├── FlowScheduleJob.cs           ← Quartz IJob that triggers flows
 └── FlowSchedulerService.cs      ← Schedule registration and lifecycle
 
-Tables/
+Database/Entities/
 └── FlowSchedule.cs
 
-Controllers/
+Api/
 └── BikiranEngineScheduleController.cs
 
-Models/FlowRunner/V3/
+Models/
 └── FlowScheduleDTOs.cs
 ```
 

@@ -238,19 +238,19 @@ For these cases, use code-defined flows via `FlowBuilder`.
 ## File Structure
 
 ```
-Services/FlowRunner/FlowDefinitionRunner/
+Definitions/
 ├── FlowDefinitionRunner.cs       ← Loads definition, interpolates params, triggers flow
 ├── NodeDescriptorRegistry.cs     ← Maps type strings to IFlowNode factories
 ├── NodeDescriptor.cs             ← Descriptor model with helper methods
 └── FlowDefinitionJson.cs         ← JSON deserialization models
 
-Tables/
+Database/Entities/
 ├── FlowDefinition.cs
 └── FlowDefinitionRun.cs
 
-Controllers/
+Api/
 └── BikiranEngineDefinitionController.cs
 
-Models/FlowRunner/V3/
+Models/
 └── FlowDefinitionDTOs.cs
 ```

@@ -229,22 +229,22 @@ new WhileLoopNode("poll_status") {
 
 ## DatabaseQueryNode
 
-Runs an EF Core query and stores the result in context.
+Runs an EF Core query against the host application's database and stores the result in context. Generic over the host app's `DbContext` type for type-safe queries.
 
-| Property           | Type                                                     | Default                 | Description                              |
-| ------------------ | -------------------------------------------------------- | ----------------------- | ---------------------------------------- |
-| `Name`             | string                                                   | required                | Node name                                |
-| `Query`            | Func\<AppDbContext, CancellationToken, Task\<object?\>\> | required                | The EF Core query delegate               |
-| `OutputKey`        | string                                                   | `"{Name}_result"`       | Context key for the result               |
-| `FailIfNull`       | bool                                                     | `false`                 | Return failure if the query returns null |
-| `NullErrorMessage` | string                                                   | `"Query returned null"` | Error message when failing on null       |
+| Property           | Type                                                       | Default                 | Description                              |
+| ------------------ | ---------------------------------------------------------- | ----------------------- | ---------------------------------------- |
+| `Name`             | string                                                     | required                | Node name                                |
+| `Query`            | Func\<TContext, CancellationToken, Task\<object?\>\>       | required                | The EF Core query delegate               |
+| `OutputKey`        | string                                                     | `"{Name}_result"`       | Context key for the result               |
+| `FailIfNull`       | bool                                                       | `false`                 | Return failure if the query returns null |
+| `NullErrorMessage` | string                                                     | `"Query returned null"` | Error message when failing on null       |
 
-**Requirement:** `FlowContext.DbContext` must be set.
+**Requirement:** `FlowContext.DbContext` must be set to an instance of `TContext`.
 
 **Important — always use EF Core LINQ or parameterized queries. Never use raw SQL string interpolation inside the delegate.**
 
 ```csharp
-new DatabaseQueryNode("fetch_subscription") {
+new DatabaseQueryNode<AppDbContext>("fetch_subscription") {
     Query = async (db, ct) => await db.Subscription
         .Where(s => s.Id == subscriptionId && s.TimeDeleted == 0)
         .FirstOrDefaultAsync(ct),
@@ -338,6 +338,8 @@ new ParallelNode("multi_channel_notify") {
 
 Developers can create custom nodes inside their own application by implementing `IFlowNode`. Custom nodes have full access to the `FlowContext` — including shared variables, credentials, and injected services.
 
+> For a comprehensive guide covering naming conventions, error handling, testing, thread safety, and advanced patterns, see [12-custom-node-guide.md](12-custom-node-guide.md).
+
 ### Step 1 — Implement IFlowNode
 
 ```csharp
@@ -388,7 +390,8 @@ var serviceId = await FlowBuilder
     .AddNode(new EmailSendNode("send_invoice") {
         ToEmail = "customer@example.com",
         Subject = "Your Invoice",
-        HtmlBody = ctx => $"<p>Download your invoice: {ctx.Get<string>("pdf_url")}</p>"
+        HtmlBodyResolver = ctx =>
+            $"<p>Download your invoice: {ctx.Get<string>("pdf_url")}</p>"
     })
     .StartAsync();
 ```

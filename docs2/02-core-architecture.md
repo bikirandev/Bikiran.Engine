@@ -17,8 +17,8 @@ The engine starts as an in-project service. The abstractions are structured for 
 **Layer separation:**
 
 ```
-Package layer (abstract)  → No database knowledge, no AppDbContext
-Application layer (concrete) → Implements IFlowLogger using AppDbContext
+Package layer  → Engine internals (EngineDbContext, FlowDbLogger, auto-migration)
+Host app layer → Consumer's DbContext (used in DatabaseQueryNode), DI, HttpContext
 ```
 
 ### Programmatic Flow Creation
@@ -64,7 +64,7 @@ When a node fails, the behavior depends on the `OnFailure` setting:
 
 ## Core Abstractions
 
-All core abstractions live in `Services/FlowRunner/Core/`.
+All core abstractions live in `Core/`.
 
 ### IFlowNode
 
@@ -105,7 +105,7 @@ public class NodeResult
 Nodes communicate through a shared `FlowContext` that carries:
 
 - **Variables** — an in-memory dictionary (`Dictionary<string, object>`) for passing data between nodes.
-- **Injected services** — `AppDbContext`, `HttpContext`, `IServiceProvider`, `ILogger`.
+- **Injected services** — `DbContext` (host app's EF Core context), `HttpContext`, `IServiceProvider`, `ILogger`.
 - **Credentials** — named credentials registered at startup, accessible via `GetCredential<T>(name)`.
 
 ```csharp
@@ -114,8 +114,8 @@ public class FlowContext
     public string ServiceId { get; internal set; }
     public string FlowName { get; internal set; }
 
-    // Injected services
-    public AppDbContext? DbContext { get; set; }
+    // Injected services (from the host application)
+    public DbContext? DbContext { get; set; }       // Host app's DbContext (for DatabaseQueryNode)
     public HttpContext? HttpContext { get; set; }
     public IServiceProvider? Services { get; set; }
     public ILogger? Logger { get; set; }
@@ -206,25 +206,29 @@ public interface IFlowLogger
 }
 ```
 
-The default implementation (`FlowDbLogger`) uses `AppDbContext`. If no database context is available, logging is silently skipped — it is optional but enabled by default.
+The default implementation (`FlowDbLogger`) uses the engine's internal `EngineDbContext` (separate from the host app's `DbContext`). Logging is enabled by default and writes to the engine's own tables.
 
 ---
 
 ## File Structure
 
 ```
-Services/FlowRunner/
-├── Core/
-│   ├── IFlowNode.cs
-│   ├── NodeResult.cs
-│   ├── FlowContext.cs
-│   ├── FlowRunConfig.cs
-│   ├── FlowRunStatusEnum.cs
-│   ├── IFlowLogger.cs
-│   └── FlowAbortException.cs
-├── Nodes/
-│   └── (all node implementations)
+Core/
+├── IFlowNode.cs
+├── NodeResult.cs
+├── FlowContext.cs
+├── FlowRunConfig.cs
+├── FlowRunStatusEnum.cs
+├── IFlowLogger.cs
+└── FlowAbortException.cs
+
+Nodes/
+└── (all node implementations)
+
+Builder/
 ├── FlowBuilder.cs
-├── FlowRunner.cs
+└── FlowRunner.cs
+
+Logging/
 └── FlowDbLogger.cs
 ```

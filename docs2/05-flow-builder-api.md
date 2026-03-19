@@ -61,7 +61,7 @@ Provide services and shared state via `.WithContext()`:
 
 ```csharp
 .WithContext(ctx => {
-    ctx.DbContext = _context;          // For DatabaseQueryNode
+    ctx.DbContext = _context;          // Host app's DbContext (for DatabaseQueryNode)
     ctx.HttpContext = HttpContext;      // For capturing caller metadata
     ctx.Logger = _logger;              // For structured logging
     ctx.Services = _serviceProvider;   // General-purpose DI access

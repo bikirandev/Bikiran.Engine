@@ -2,6 +2,8 @@
 
 This document provides a step-by-step guide for building Bikiran.Engine, organized by phase. Each step is self-contained and testable before moving on.
 
+> **Path convention:** Phases 1–4 use development-time paths (`Services/FlowRunner/`, `Tables/`, `Controllers/`). In Phase 5, all code is reorganized into the final NuGet package structure (`Core/`, `Nodes/`, `Builder/`, `Database/`, etc.). See the **File Structure Summary** at the end for the final layout.
+
 ---
 
 ## Phase 1: Core Engine
@@ -12,21 +14,22 @@ This document provides a step-by-step guide for building Bikiran.Engine, organiz
 
 - `Tables/FlowRun.cs`
 - `Tables/FlowNodeLog.cs`
+- `Database/EngineDbContext.cs` — the engine's own internal `DbContext` for engine tables only
 
-**Modify:**
-
-- `Data/AppDbContext.cs` — add `DbSet<FlowRun>` and `DbSet<FlowNodeLog>`
+> **Note:** The engine uses its own `EngineDbContext`, separate from the host application's `AppDbContext`. The host's `AppDbContext` is never modified.
 
 **Verify:** `dotnet build` — no errors.
 
-### Step 2 — Run EF Core Migration
+### Step 2 — Run Initial Schema Setup
+
+During development, use EF Core migrations on `EngineDbContext`:
 
 ```powershell
-dotnet ef migrations add AddFlowRunnerTables
-dotnet ef database update
+dotnet ef migrations add InitEngineSchema --context EngineDbContext
+dotnet ef database update --context EngineDbContext
 ```
 
-**Verify:** Tables `FlowRun` and `FlowNodeLog` appear in the database.
+> **Note:** In the final NuGet package (Phase 5), EF migrations are replaced by the auto-migration system. Consumers never run `dotnet ef migrations add` for engine tables.
 
 ### Step 3 — Create Core Abstractions
 
@@ -58,7 +61,7 @@ Create each node in `Services/FlowRunner/Nodes/` in this order:
 
 **Create:** `Services/FlowRunner/FlowDbLogger.cs`
 
-Implements `IFlowLogger` using `AppDbContext`. If `DbContext` is null, all methods should silently skip.
+Implements `IFlowLogger` using `EngineDbContext` (the engine's own internal context). This writes to the engine's `FlowRun` and `FlowNodeLog` tables.
 
 ### Step 6 — Implement FlowRunner (Execution Engine)
 
@@ -91,11 +94,16 @@ Implement the five admin endpoints (list runs, get run detail, get progress, fil
 
 ### Step 9 — Register Services in Program.cs
 
-The `FlowBuilder` uses a static factory pattern — no DI registration needed. Ensure these are already registered:
+Register the engine's internal services. During development (before NuGet extraction in Phase 5), register manually:
 
 ```csharp
 builder.Services.AddHttpClient();
+builder.Services.AddDbContext<EngineDbContext>(options =>
+    options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString)));
+builder.Services.AddScoped<IFlowLogger, FlowDbLogger>();
 ```
+
+> **Note:** In Phase 5, all of this is encapsulated inside `AddBikiranEngine()`.
 
 ### Step 10 — Integration Test
 
@@ -119,7 +127,7 @@ Wrap an existing node with configurable retry logic.
 
 ### Step 3 — DatabaseQueryNode
 
-Requires `FlowContext.DbContext`. Test by querying a known record.
+Generic over `TContext : DbContext`. Uses the host app's `DbContext` from `FlowContext.DbContext`. Test by querying a known record.
 
 **Verify:** Query a `UserProfile` row and confirm the `OutputKey` is populated.
 
@@ -135,7 +143,7 @@ Implement after all other nodes are stable. Test with 2 branches: one `WaitNode`
 
 ### Step 1 — Create DB Tables
 
-Create `Tables/FlowDefinition.cs` and `Tables/FlowDefinitionRun.cs`. Add `DbSet` entries. Run EF migration.
+Create `Tables/FlowDefinition.cs` and `Tables/FlowDefinitionRun.cs`. Add `DbSet` entries to `EngineDbContext`. Run EF migration on `EngineDbContext`.
 
 ### Step 2 — Create JSON Models
 
@@ -180,13 +188,13 @@ All 9 endpoints. Validate JSON on create/update by deserializing before saving. 
 
 ### Step 1 — Create FlowSchedule Table
 
-Create `Tables/FlowSchedule.cs`. Add `DbSet`. Run migration.
+Create `Tables/FlowSchedule.cs`. Add `DbSet` to `EngineDbContext`. Run migration on `EngineDbContext`.
 
 ### Step 2 — Create FlowScheduleJob
 
 **Create:** `Services/FlowRunner/Scheduling/FlowScheduleJob.cs`
 
-Quartz `IJob` implementation. Must use scoped service provider for `AppDbContext`.
+Quartz `IJob` implementation. Must use scoped service provider for `EngineDbContext`.
 
 ### Step 3 — Create FlowSchedulerService
 
@@ -227,19 +235,22 @@ dotnet new classlib -n Bikiran.Engine --framework net9.0
 dotnet sln add src/Bikiran.Engine
 ```
 
-### Step 2 — Move All Engine Code into Package
+### Step 2 — Organize Package Structure
 
-Move all code from `Services/FlowRunner/`, `Tables/`, and admin controllers into the package project. Structure:
+Organize all engine code into the package project with a clean folder structure:
 
-- `Core/` — `IFlowNode`, `NodeResult`, `FlowContext`, `FlowRunConfig`
+- `Core/` — `IFlowNode`, `NodeResult`, `FlowContext`, `FlowRunConfig`, `IFlowLogger`
 - `Nodes/` — All built-in nodes
 - `Builder/` — `FlowBuilder`, `FlowRunner`
-- `Logging/` — `IFlowLogger`, `FlowDbLogger`, `InMemoryFlowLogger`
-- `Database/` — EF entities, configurations, auto-migration logic, `EngineSchemaVersion`
+- `Logging/` — `FlowDbLogger`, `InMemoryFlowLogger`
+- `Database/` — `EngineDbContext`, `AutoMigrationRunner`
+- `Database/Entities/` — All EF Core entity classes (`FlowRun`, `FlowNodeLog`, etc.)
 - `Definitions/` — `FlowDefinitionRunner`, `NodeDescriptorRegistry`
 - `Scheduling/` — `FlowScheduleJob`, `FlowSchedulerService`
-- `Credentials/` — `SmtpCredential`, `GenericCredential`, credential store
+- `Credentials/` — `SmtpCredential`, `GenericCredential`, `CredentialStore`
 - `Api/` — Admin API controllers (`/api/bikiran-engine/*`)
+- `Configuration/` — `BikiranEngineOptions`, `ServiceCollectionExtensions`
+- `Models/` — DTO classes
 
 ### Step 3 — Implement Auto-Migration System
 
@@ -299,7 +310,7 @@ Set up the GitHub repository and CI/CD. Tag `v1.0.0` to trigger the first publis
 ## File Structure Summary
 
 ```
-Services/FlowRunner/
+Bikiran.Engine/
 ├── Core/
 │   ├── IFlowNode.cs
 │   ├── NodeResult.cs
@@ -318,11 +329,17 @@ Services/FlowRunner/
 │   ├── TransformNode.cs
 │   ├── RetryNode.cs
 │   └── ParallelNode.cs
+├── Builder/
+│   ├── FlowBuilder.cs
+│   └── FlowRunner.cs
+├── Logging/
+│   ├── FlowDbLogger.cs
+│   └── InMemoryFlowLogger.cs
 ├── Credentials/
 │   ├── SmtpCredential.cs
 │   ├── GenericCredential.cs
 │   └── CredentialStore.cs
-├── FlowDefinitionRunner/
+├── Definitions/
 │   ├── FlowDefinitionRunner.cs
 │   ├── NodeDescriptorRegistry.cs
 │   ├── NodeDescriptor.cs
@@ -331,25 +348,23 @@ Services/FlowRunner/
 │   ├── FlowScheduleJob.cs
 │   └── FlowSchedulerService.cs
 ├── Database/
-│   └── AutoMigrationRunner.cs
-├── FlowBuilder.cs
-├── FlowRunner.cs
-└── FlowDbLogger.cs
-
-Tables/
-├── FlowRun.cs
-├── FlowNodeLog.cs
-├── FlowDefinition.cs
-├── FlowDefinitionRun.cs
-├── FlowSchedule.cs
-└── EngineSchemaVersion.cs
-
-Controllers/
-├── BikiranEngineController.cs
-├── BikiranEngineDefinitionController.cs
-└── BikiranEngineScheduleController.cs
-
-Models/FlowRunner/V3/
-├── FlowDefinitionDTOs.cs
-└── FlowScheduleDTOs.cs
+│   ├── EngineDbContext.cs
+│   ├── AutoMigrationRunner.cs
+│   └── Entities/
+│       ├── FlowRun.cs
+│       ├── FlowNodeLog.cs
+│       ├── FlowDefinition.cs
+│       ├── FlowDefinitionRun.cs
+│       ├── FlowSchedule.cs
+│       └── EngineSchemaVersion.cs
+├── Api/
+│   ├── BikiranEngineController.cs
+│   ├── BikiranEngineDefinitionController.cs
+│   └── BikiranEngineScheduleController.cs
+├── Configuration/
+│   ├── BikiranEngineOptions.cs
+│   └── ServiceCollectionExtensions.cs
+└── Models/
+    ├── FlowDefinitionDTOs.cs
+    └── FlowScheduleDTOs.cs
 ```

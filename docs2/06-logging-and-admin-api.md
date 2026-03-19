@@ -73,7 +73,7 @@ public interface IFlowLogger
 }
 ```
 
-The default implementation (`FlowDbLogger`) persists records using `AppDbContext`. If no database context is available, all logging methods silently skip — logging is optional.
+The default implementation (`FlowDbLogger`) persists records using the engine's internal `EngineDbContext`. Logging is enabled by default and writes to the engine's own tables (`FlowRun`, `FlowNodeLog`).
 
 ---
 

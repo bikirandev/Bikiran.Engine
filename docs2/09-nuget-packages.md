@@ -113,7 +113,7 @@ The package manages its own database schema independently from the host applicat
 ### What This Means for Developers
 
 - **No manual migrations** — you never run `dotnet ef migrations add` for engine tables.
-- **No DbContext changes** — the engine uses its own internal `DbContext`; your `AppDbContext` is not touched.
+- **No DbContext changes** — the engine uses its own internal `EngineDbContext`; your `AppDbContext` is not touched.
 - **Safe updates** — updating the NuGet package version automatically migrates the schema on next startup.
 - **Connection reuse** — the engine uses the same connection string as your application.
 
@@ -193,7 +193,7 @@ builder.Services.AddBikiranEngine(options =>
 });
 ```
 
-See [04-node-library.md](04-node-library.md) for details on creating custom nodes.
+See [04-node-library.md](04-node-library.md) for the built-in node reference, and [12-custom-node-guide.md](12-custom-node-guide.md) for the full custom node creation guide.
 
 ---
 

@@ -60,6 +60,24 @@ The engine is built incrementally across five phases:
 
 ---
 
+## Documentation Index
+
+| Document                                                   | Topic                                    |
+| ---------------------------------------------------------- | ---------------------------------------- |
+| [02-core-architecture.md](02-core-architecture.md)         | Core abstractions and execution model    |
+| [03-database-schema.md](03-database-schema.md)             | All database tables and SQL              |
+| [04-node-library.md](04-node-library.md)                   | Built-in node reference                  |
+| [05-flow-builder-api.md](05-flow-builder-api.md)           | Fluent builder API and execution engine  |
+| [06-logging-and-admin-api.md](06-logging-and-admin-api.md) | Logging, monitoring, admin endpoints     |
+| [07-flow-definitions.md](07-flow-definitions.md)           | DB-stored flow definitions (JSON)        |
+| [08-scheduling.md](08-scheduling.md)                       | Scheduled flow execution (Quartz.NET)    |
+| [09-nuget-packages.md](09-nuget-packages.md)               | Package setup, credentials, migration    |
+| [10-usage-examples.md](10-usage-examples.md)               | Ready-to-use code examples              |
+| [11-implementation-guide.md](11-implementation-guide.md)   | Step-by-step build guide                |
+| [12-custom-node-guide.md](12-custom-node-guide.md)         | Custom node creation guide              |
+
+---
+
 ## How a Flow Runs (High Level)
 
 ```

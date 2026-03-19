@@ -275,17 +275,17 @@ CREATE TABLE EngineSchemaVersion (
 
 ---
 
-## EF Core Table Classes
+## EF Core Entity Classes
 
-Each table has a corresponding C# class with EF Core attributes. These classes live in the `Tables/` folder.
+Each table has a corresponding C# entity class managed by the engine's internal `EngineDbContext`. These live in the `Database/Entities/` folder.
 
-| Table                | C# Class File                      |
-| -------------------- | ---------------------------------- |
-| `FlowRun`            | `Tables/FlowRun.cs`                |
-| `FlowNodeLog`        | `Tables/FlowNodeLog.cs`            |
-| `FlowDefinition`     | `Tables/FlowDefinition.cs`         |
-| `FlowDefinitionRun`  | `Tables/FlowDefinitionRun.cs`      |
-| `FlowSchedule`       | `Tables/FlowSchedule.cs`           |
-| `EngineSchemaVersion`| `Tables/EngineSchemaVersion.cs`    |
+| Table                | C# Entity File                              |
+| -------------------- | ------------------------------------------- |
+| `FlowRun`            | `Database/Entities/FlowRun.cs`              |
+| `FlowNodeLog`        | `Database/Entities/FlowNodeLog.cs`          |
+| `FlowDefinition`     | `Database/Entities/FlowDefinition.cs`       |
+| `FlowDefinitionRun`  | `Database/Entities/FlowDefinitionRun.cs`    |
+| `FlowSchedule`       | `Database/Entities/FlowSchedule.cs`         |
+| `EngineSchemaVersion`| `Database/Entities/EngineSchemaVersion.cs`  |
 
-All tables are managed internally by the package. The engine uses its own `DbContext` — developers do not need to register `DbSet` entries in their `AppDbContext`.
+All tables are managed internally by the package. The engine uses its own `EngineDbContext` — developers do not need to register `DbSet` entries in their application's `DbContext`.
