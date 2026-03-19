@@ -83,7 +83,7 @@ The fluent API entry point. Accumulates configuration, context, and nodes, then 
 
 ### Step 8 — Create Admin Controller
 
-**Create:** `Controllers/BikirianEngineController.cs`
+**Create:** `Controllers/BikiranEngineController.cs`
 
 Implement the five admin endpoints (list runs, get run detail, get progress, filter by status, soft-delete). All routes under `/api/bikiran-engine/runs`.
 
@@ -163,7 +163,7 @@ Implements `TriggerAsync()`: load definition → interpolate parameters → dese
 
 ### Step 6 — Create Admin CRUD Controller
 
-**Create:** `Controllers/BikirianEngineDefinitionController.cs`
+**Create:** `Controllers/BikiranEngineDefinitionController.cs`
 
 All 9 endpoints. Validate JSON on create/update by deserializing before saving. Routes under `/api/bikiran-engine/definitions`.
 
@@ -202,7 +202,7 @@ Register Quartz services, `FlowSchedulerService`, and wire up `ApplicationStarte
 
 ### Step 5 — Create Admin Controller
 
-**Create:** `Controllers/BikirianEngineScheduleController.cs`
+**Create:** `Controllers/BikiranEngineScheduleController.cs`
 
 8 endpoints. On create/update: save to DB then register in Quartz. On toggle: update `IsActive` and register/unregister. On delete: soft-delete and unregister. Routes under `/api/bikiran-engine/schedules`.
 
@@ -252,20 +252,20 @@ Create the `EngineSchemaVersion` table and migration runner. On startup:
 
 ### Step 4 — Implement Credentials System
 
-Create `BikirianEngineOptions.AddCredential()` and the credential store. Implement `FlowContext.GetCredential<T>()`. Update `EmailSendNode` to resolve SMTP credentials by name.
+Create `BikiranEngineOptions.AddCredential()` and the credential store. Implement `FlowContext.GetCredential<T>()`. Update `EmailSendNode` to resolve SMTP credentials by name.
 
 ### Step 5 — Implement Custom Node Registration
 
-Create `BikirianEngineOptions.RegisterNode<T>()` that adds custom types to `NodeDescriptorRegistry`.
+Create `BikiranEngineOptions.RegisterNode<T>()` that adds custom types to `NodeDescriptorRegistry`.
 
 ### Step 6 — Create Extension Methods
 
 ```csharp
-public static IServiceCollection AddBikirianEngine(
+public static IServiceCollection AddBikiranEngine(
     this IServiceCollection services,
-    Action<BikirianEngineOptions> configure);
+    Action<BikiranEngineOptions> configure);
 
-public static IEndpointRouteBuilder MapBikirianEngineEndpoints(
+public static IEndpointRouteBuilder MapBikiranEngineEndpoints(
     this IEndpointRouteBuilder endpoints);
 ```
 
@@ -345,9 +345,9 @@ Tables/
 └── EngineSchemaVersion.cs
 
 Controllers/
-├── BikirianEngineController.cs
-├── BikirianEngineDefinitionController.cs
-└── BikirianEngineScheduleController.cs
+├── BikiranEngineController.cs
+├── BikiranEngineDefinitionController.cs
+└── BikiranEngineScheduleController.cs
 
 Models/FlowRunner/V3/
 ├── FlowDefinitionDTOs.cs

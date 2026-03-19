@@ -81,7 +81,7 @@ The default implementation (`FlowDbLogger`) persists records using `AppDbContext
 
 ### Flow Runs
 
-**Controller:** `Controllers/BikirianEngineController.cs`
+**Controller:** `Controllers/BikiranEngineController.cs`
 **Route prefix:** `/api/bikiran-engine`
 
 | Method   | Route                                                | Description                                   |
@@ -94,7 +94,7 @@ The default implementation (`FlowDbLogger`) persists records using `AppDbContext
 
 ### Flow Definitions
 
-**Controller:** `Controllers/BikirianEngineDefinitionController.cs`
+**Controller:** `Controllers/BikiranEngineDefinitionController.cs`
 **Route prefix:** `/api/bikiran-engine/definitions`
 
 | Method   | Route                                                 | Description                                 |
@@ -111,7 +111,7 @@ The default implementation (`FlowDbLogger`) persists records using `AppDbContext
 
 ### Flow Schedules
 
-**Controller:** `Controllers/BikirianEngineScheduleController.cs`
+**Controller:** `Controllers/BikiranEngineScheduleController.cs`
 **Route prefix:** `/api/bikiran-engine/schedules`
 
 | Method   | Route                                              | Description                                |

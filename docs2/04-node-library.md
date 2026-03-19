@@ -398,7 +398,7 @@ var serviceId = await FlowBuilder
 To use custom nodes in database-stored flow definitions (JSON), register the type at startup:
 
 ```csharp
-builder.Services.AddBikirianEngine(options =>
+builder.Services.AddBikiranEngine(options =>
 {
     options.ConnectionString = "...";
     options.RegisterNode<InvoicePdfNode>("InvoicePdf");

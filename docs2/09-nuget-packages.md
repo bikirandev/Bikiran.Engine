@@ -42,10 +42,10 @@ dotnet add package Bikiran.Engine
 
 ### Step 1 — Register Services
 
-In `Program.cs`, call `AddBikirianEngine()` with a database connection string. The package auto-configures the database schema on startup and applies migrations on package updates.
+In `Program.cs`, call `AddBikiranEngine()` with a database connection string. The package auto-configures the database schema on startup and applies migrations on package updates.
 
 ```csharp
-builder.Services.AddBikirianEngine(options =>
+builder.Services.AddBikiranEngine(options =>
 {
     options.ConnectionString = builder.Configuration.GetConnectionString("Default");
 
@@ -77,7 +77,7 @@ builder.Services.AddBikirianEngine(options =>
 ### Step 2 — Map Admin Endpoints
 
 ```csharp
-app.MapBikirianEngineEndpoints();   // Maps /api/bikiran-engine/* routes
+app.MapBikiranEngineEndpoints();   // Maps /api/bikiran-engine/* routes
 ```
 
 That's it. The package handles:
@@ -126,7 +126,7 @@ The named credential system allows developers to register external service crede
 ### Registering Credentials
 
 ```csharp
-builder.Services.AddBikirianEngine(options =>
+builder.Services.AddBikiranEngine(options =>
 {
     options.ConnectionString = "...";
 
@@ -184,7 +184,7 @@ var apiKey = cred.Values["ApiKey"];
 Developers can register custom node types so they are available in JSON-based flow definitions:
 
 ```csharp
-builder.Services.AddBikirianEngine(options =>
+builder.Services.AddBikiranEngine(options =>
 {
     options.ConnectionString = "...";
 
@@ -219,12 +219,12 @@ Publishing is handled via GitHub Actions on version tags (`v1.0.0`), pushing to 
 
 ```csharp
 // Program.cs
-builder.Services.AddBikirianEngine(options =>
+builder.Services.AddBikiranEngine(options =>
 {
     options.ConnectionString = builder.Configuration.GetConnectionString("Default");
 });
 
-app.MapBikirianEngineEndpoints();
+app.MapBikiranEngineEndpoints();
 ```
 
 ```csharp
@@ -242,7 +242,7 @@ var serviceId = await FlowBuilder
 ### Full Setup (with email + credentials + scheduling)
 
 ```csharp
-builder.Services.AddBikirianEngine(options =>
+builder.Services.AddBikiranEngine(options =>
 {
     options.ConnectionString = builder.Configuration.GetConnectionString("Default");
     options.EnableNodeLogging = true;
@@ -258,5 +258,5 @@ builder.Services.AddBikirianEngine(options =>
     });
 });
 
-app.MapBikirianEngineEndpoints();
+app.MapBikiranEngineEndpoints();
 ```
