@@ -10,7 +10,7 @@
         "projectUniqueName": "/home/runner/work/Bikiran.Engine/Bikiran.Engine/Bikiran.Engine/Bikiran.Engine.csproj",
         "projectName": "Bikiran.Engine",
         "projectPath": "/home/runner/work/Bikiran.Engine/Bikiran.Engine/Bikiran.Engine/Bikiran.Engine.csproj",
-        "packagesPath": "/home/runner/.nuget/packages/",
+        "packagesPath": "/tmp/codeql-scratch-c1832eb5d9ebc837/dbs/csharp/working/packages",
         "outputPath": "/home/runner/work/Bikiran.Engine/Bikiran.Engine/Bikiran.Engine/obj/",
         "projectStyle": "PackageReference",
         "configFilePaths": [
@@ -48,11 +48,11 @@
               "target": "Package",
               "version": "[4.3.0, )"
             },
-            "Microsoft.AspNetCore.Mvc.Core": {
-              "target": "Package",
-              "version": "[2.2.5, )"
-            },
             "Microsoft.EntityFrameworkCore": {
+              "target": "Package",
+              "version": "[8.0.0, )"
+            },
+            "Microsoft.EntityFrameworkCore.InMemory": {
               "target": "Package",
               "version": "[8.0.0, )"
             },
@@ -99,6 +99,9 @@
             }
           ],
           "frameworkReferences": {
+            "Microsoft.AspNetCore.App": {
+              "privateAssets": "none"
+            },
             "Microsoft.NETCore.App": {
               "privateAssets": "all"
             }
