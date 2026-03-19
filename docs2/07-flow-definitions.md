@@ -175,7 +175,6 @@ var serviceId = await _definitionRunner.TriggerAsync(
     },
     contextSetup: ctx => {
         ctx.HttpContext = HttpContext;
-        ctx.EmailSender = _emailSender;
     },
     triggerSource: nameof(OrdersV3Controller)
 );
@@ -249,8 +248,8 @@ Tables/
 ├── FlowDefinition.cs
 └── FlowDefinitionRun.cs
 
-ControllersAdm/
-└── FlowDefinitionAdmController.cs
+Controllers/
+└── BikirianEngineDefinitionController.cs
 
 Models/FlowRunner/V3/
 └── FlowDefinitionDTOs.cs

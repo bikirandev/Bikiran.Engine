@@ -19,7 +19,6 @@ var serviceId = await FlowBuilder
     .WithContext(ctx => {
         ctx.DbContext = _context;
         ctx.HttpContext = HttpContext;
-        ctx.EmailSender = _emailSender;
     })
     .AddNode(new HttpRequestNode("fetch_order") {
         Url = "https://api.example.com/order/123",
@@ -179,7 +178,6 @@ var serviceId = await _definitionRunner.TriggerAsync(
     },
     contextSetup: ctx => {
         ctx.HttpContext = HttpContext;
-        ctx.EmailSender = _emailSender;
     },
     triggerSource: nameof(AuthV3Controller)
 );
@@ -266,7 +264,6 @@ public async Task<ActionResult> TestFlow()
         .WithContext(ctx => {
             ctx.DbContext = _context;
             ctx.HttpContext = HttpContext;
-            ctx.EmailSender = _emailSender;
         })
         .AddNode(new WaitNode("initial_wait") { DelayMs = 500 })
         .AddNode(new HttpRequestNode("check_api") {

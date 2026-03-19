@@ -26,7 +26,7 @@ Bikiran.Engine is a workflow automation engine built for .NET applications. It a
 | Unique Run Tracking      | Each run gets a UUID `ServiceId` for tracing                                                               |
 | DB-Stored Definitions    | Save reusable flow templates as JSON in the database                                                       |
 | Scheduled Execution      | Trigger flows on a cron schedule, fixed interval, or one-time future date                                  |
-| NuGet-Ready Architecture | Designed to be extractable into standalone NuGet packages                                                  |
+| NuGet-Ready Architecture | Distributed as a single `Bikiran.Engine` NuGet package                                                     |
 
 ---
 
@@ -56,7 +56,7 @@ The engine is built incrementally across five phases:
 | **Phase 2** | Enhanced Nodes         | Database queries, data transforms, retry wrappers, parallel execution                                                  |
 | **Phase 3** | Flow Definitions in DB | Store reusable flow templates as JSON, trigger flows via admin API or code without redeployment                        |
 | **Phase 4** | Scheduling             | Cron, interval, and one-time scheduled execution using Quartz.NET                                                      |
-| **Phase 5** | NuGet Extraction       | Split the engine into modular NuGet packages for use in any .NET 9 application                                         |
+| **Phase 5** | NuGet Package          | Single `Bikiran.Engine` NuGet package with auto DB migration, credentials system, and custom node support   |
 
 ---
 
@@ -89,7 +89,6 @@ var serviceId = await FlowBuilder
     .WithContext(ctx => {
         ctx.DbContext = _context;
         ctx.HttpContext = HttpContext;
-        ctx.EmailSender = _emailSender;
     })
     .AddNode(new HttpRequestNode("fetch_order") {
         Url = "https://api.example.com/order/123",

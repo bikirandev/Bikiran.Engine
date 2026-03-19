@@ -12,7 +12,7 @@ Bikiran.Engine runs inside your .NET application — it is not a separate servic
 
 ### In-Project First, Package Later
 
-The engine starts as an in-project service (inside `Services/FlowRunner/`). The abstractions are structured so that extracting it into NuGet packages later requires minimal changes.
+The engine starts as an in-project service. The abstractions are structured for extraction into a single NuGet package (`Bikiran.Engine`) requiring minimal changes.
 
 **Layer separation:**
 
@@ -80,6 +80,8 @@ public interface IFlowNode
 }
 ```
 
+Any class that implements `IFlowNode` can be used as a node in a flow — including custom nodes created in the host application. See [04-node-library.md](04-node-library.md#creating-custom-nodes) for details.
+
 ### NodeResult
 
 The result returned by every node after execution:
@@ -103,7 +105,8 @@ public class NodeResult
 Nodes communicate through a shared `FlowContext` that carries:
 
 - **Variables** — an in-memory dictionary (`Dictionary<string, object>`) for passing data between nodes.
-- **Injected services** — `AppDbContext`, `HttpContext`, `EmailSenderV3Service`, `IServiceProvider`, `ILogger`.
+- **Injected services** — `AppDbContext`, `HttpContext`, `IServiceProvider`, `ILogger`.
+- **Credentials** — named credentials registered at startup, accessible via `GetCredential<T>(name)`.
 
 ```csharp
 public class FlowContext
@@ -116,13 +119,15 @@ public class FlowContext
     public HttpContext? HttpContext { get; set; }
     public IServiceProvider? Services { get; set; }
     public ILogger? Logger { get; set; }
-    public EmailSenderV3Service? EmailSender { get; set; }
 
     // Shared variables
     void Set(string key, object value);
     T? Get<T>(string key);
     bool Has(string key);
     IReadOnlyDictionary<string, object> Variables { get; }
+
+    // Credential access
+    T GetCredential<T>(string name) where T : class;
 }
 ```
 

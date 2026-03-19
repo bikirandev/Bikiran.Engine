@@ -6,13 +6,14 @@ This document describes all database tables used by Bikiran.Engine across its fe
 
 ## Tables at a Glance
 
-| Table               | Purpose                                             | Introduced In    |
-| ------------------- | --------------------------------------------------- | ---------------- |
-| `FlowRun`           | Tracks each workflow execution                      | Core Engine      |
-| `FlowNodeLog`       | Records each node's execution within a run          | Core Engine      |
-| `FlowDefinition`    | Stores reusable flow templates as JSON              | Flow Definitions |
-| `FlowDefinitionRun` | Links a FlowRun to the definition that triggered it | Flow Definitions |
-| `FlowSchedule`      | Defines scheduled triggers for flow definitions     | Scheduling       |
+| Table                | Purpose                                             | Introduced In    |
+| -------------------- | --------------------------------------------------- | ---------------- |
+| `FlowRun`            | Tracks each workflow execution                      | Core Engine      |
+| `FlowNodeLog`        | Records each node's execution within a run          | Core Engine      |
+| `FlowDefinition`     | Stores reusable flow templates as JSON              | Flow Definitions |
+| `FlowDefinitionRun`  | Links a FlowRun to the definition that triggered it | Flow Definitions |
+| `FlowSchedule`       | Defines scheduled triggers for flow definitions     | Scheduling       |
+| `EngineSchemaVersion`| Tracks the current database schema version          | Auto-Migration   |
 
 ---
 
@@ -249,16 +250,42 @@ CREATE TABLE FlowSchedule (
 
 ---
 
+## EngineSchemaVersion
+
+Tracks the current database schema version. Used by the auto-migration system to detect and apply schema changes when the NuGet package is updated.
+
+| Column           | Type         | Default | Description                                      |
+| ---------------- | ------------ | ------- | ------------------------------------------------ |
+| `Id`             | INT (PK)     | `1`     | Always 1 (singleton row)                         |
+| `SchemaVersion`  | VARCHAR(20)  | —       | Current schema version (matches package version) |
+| `AppliedAt`      | BIGINT       | —       | Unix timestamp of last migration                 |
+| `PackageVersion` | VARCHAR(20)  | —       | NuGet package version that applied the migration |
+
+**SQL:**
+
+```sql
+CREATE TABLE EngineSchemaVersion (
+    Id             INT          PRIMARY KEY DEFAULT 1,
+    SchemaVersion  VARCHAR(20)  NOT NULL,
+    AppliedAt      BIGINT       NOT NULL,
+    PackageVersion VARCHAR(20)  NOT NULL,
+    CHECK (Id = 1)
+);
+```
+
+---
+
 ## EF Core Table Classes
 
 Each table has a corresponding C# class with EF Core attributes. These classes live in the `Tables/` folder.
 
-| Table               | C# Class File                 |
-| ------------------- | ----------------------------- |
-| `FlowRun`           | `Tables/FlowRun.cs`           |
-| `FlowNodeLog`       | `Tables/FlowNodeLog.cs`       |
-| `FlowDefinition`    | `Tables/FlowDefinition.cs`    |
-| `FlowDefinitionRun` | `Tables/FlowDefinitionRun.cs` |
-| `FlowSchedule`      | `Tables/FlowSchedule.cs`      |
+| Table                | C# Class File                      |
+| -------------------- | ---------------------------------- |
+| `FlowRun`            | `Tables/FlowRun.cs`                |
+| `FlowNodeLog`        | `Tables/FlowNodeLog.cs`            |
+| `FlowDefinition`     | `Tables/FlowDefinition.cs`         |
+| `FlowDefinitionRun`  | `Tables/FlowDefinitionRun.cs`      |
+| `FlowSchedule`       | `Tables/FlowSchedule.cs`           |
+| `EngineSchemaVersion`| `Tables/EngineSchemaVersion.cs`    |
 
-All classes use `[Table]`, `[Key]`, `[Column]`, `[Required]`, and `[MaxLength]` attributes for mapping. All `DbSet<T>` entries must be registered in `AppDbContext`.
+All tables are managed internally by the package. The engine uses its own `DbContext` — developers do not need to register `DbSet` entries in their `AppDbContext`.

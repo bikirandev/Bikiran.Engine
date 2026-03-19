@@ -48,7 +48,7 @@ Create each node in `Services/FlowRunner/Nodes/` in this order:
 
 1. **WaitNode** — simplest, no dependencies
 2. **HttpRequestNode** — no app context needed
-3. **EmailSendNode** — needs `EmailSenderV3Service`
+3. **EmailSendNode** — uses credentials system for SMTP
 4. **IfElseNode** — uses recursive node execution
 5. **WhileLoopNode** — uses loop management + recursive execution
 
@@ -83,9 +83,9 @@ The fluent API entry point. Accumulates configuration, context, and nodes, then 
 
 ### Step 8 — Create Admin Controller
 
-**Create:** `ControllersAdm/FlowRunnerAdmController.cs`
+**Create:** `Controllers/BikirianEngineController.cs`
 
-Implement the five admin endpoints (list runs, get run detail, get progress, filter by status, soft-delete).
+Implement the five admin endpoints (list runs, get run detail, get progress, filter by status, soft-delete). All routes under `/api/bikiran-engine/runs`.
 
 **Verify:** Hit endpoints via Swagger.
 
@@ -94,7 +94,6 @@ Implement the five admin endpoints (list runs, get run detail, get progress, fil
 The `FlowBuilder` uses a static factory pattern — no DI registration needed. Ensure these are already registered:
 
 ```csharp
-builder.Services.AddScoped<EmailSenderV3Service>();
 builder.Services.AddHttpClient();
 ```
 
@@ -164,9 +163,9 @@ Implements `TriggerAsync()`: load definition → interpolate parameters → dese
 
 ### Step 6 — Create Admin CRUD Controller
 
-**Create:** `ControllersAdm/FlowDefinitionAdmController.cs`
+**Create:** `Controllers/BikirianEngineDefinitionController.cs`
 
-All 9 endpoints. Validate JSON on create/update by deserializing before saving.
+All 9 endpoints. Validate JSON on create/update by deserializing before saving. Routes under `/api/bikiran-engine/definitions`.
 
 ### Step 7 — Integration Test
 
@@ -187,7 +186,7 @@ Create `Tables/FlowSchedule.cs`. Add `DbSet`. Run migration.
 
 **Create:** `Services/FlowRunner/Scheduling/FlowScheduleJob.cs`
 
-Quartz `IJob` implementation. Must use scoped service provider for `AppDbContext` and `EmailSenderV3Service`.
+Quartz `IJob` implementation. Must use scoped service provider for `AppDbContext`.
 
 ### Step 3 — Create FlowSchedulerService
 
@@ -203,9 +202,9 @@ Register Quartz services, `FlowSchedulerService`, and wire up `ApplicationStarte
 
 ### Step 5 — Create Admin Controller
 
-**Create:** `ControllersAdm/FlowScheduleAdmController.cs`
+**Create:** `Controllers/BikirianEngineScheduleController.cs`
 
-8 endpoints. On create/update: save to DB then register in Quartz. On toggle: update `IsActive` and register/unregister. On delete: soft-delete and unregister.
+8 endpoints. On create/update: save to DB then register in Quartz. On toggle: update `IsActive` and register/unregister. On delete: soft-delete and unregister. Routes under `/api/bikiran-engine/schedules`.
 
 ### Step 6 — Integration Test
 
@@ -216,50 +215,72 @@ Register Quartz services, `FlowSchedulerService`, and wire up `ApplicationStarte
 
 ---
 
-## Phase 5: NuGet Extraction
+## Phase 5: NuGet Package
 
-### Step 1 — Create New Solution
+### Step 1 — Create Package Solution
 
 ```powershell
-mkdir Bikiran.FlowRunner
-cd Bikiran.FlowRunner
-dotnet new sln -n Bikiran.FlowRunner
-dotnet new classlib -n Bikiran.FlowRunner.Core --framework net9.0
-dotnet sln add src/Bikiran.FlowRunner.Core
+mkdir Bikiran.Engine
+cd Bikiran.Engine
+dotnet new sln -n Bikiran.Engine
+dotnet new classlib -n Bikiran.Engine --framework net9.0
+dotnet sln add src/Bikiran.Engine
 ```
 
-Repeat for each package (EfCore, Email, Firebase, Scheduling).
+### Step 2 — Move All Engine Code into Package
 
-### Step 2 — Copy and Adapt Core Code
+Move all code from `Services/FlowRunner/`, `Tables/`, and admin controllers into the package project. Structure:
 
-Move code from `Services/FlowRunner/Core/` and `Services/FlowRunner/Nodes/` to the Core package. Remove all `AppDbContext`, `EmailSenderV3Service`, and `HttpContext` references.
+- `Core/` — `IFlowNode`, `NodeResult`, `FlowContext`, `FlowRunConfig`
+- `Nodes/` — All built-in nodes
+- `Builder/` — `FlowBuilder`, `FlowRunner`
+- `Logging/` — `IFlowLogger`, `FlowDbLogger`, `InMemoryFlowLogger`
+- `Database/` — EF entities, configurations, auto-migration logic, `EngineSchemaVersion`
+- `Definitions/` — `FlowDefinitionRunner`, `NodeDescriptorRegistry`
+- `Scheduling/` — `FlowScheduleJob`, `FlowSchedulerService`
+- `Credentials/` — `SmtpCredential`, `GenericCredential`, credential store
+- `Api/` — Admin API controllers (`/api/bikiran-engine/*`)
 
-### Step 3 — Write Core Unit Tests
+### Step 3 — Implement Auto-Migration System
 
-Create `tests/Bikiran.FlowRunner.Core.Tests/`. Test:
+Create the `EngineSchemaVersion` table and migration runner. On startup:
+
+1. Check if `EngineSchemaVersion` table exists.
+2. If not → run all SQL scripts to create tables from scratch.
+3. If yes → compare stored version with package version, apply incremental migrations.
+4. Update the `EngineSchemaVersion` record.
+
+### Step 4 — Implement Credentials System
+
+Create `BikirianEngineOptions.AddCredential()` and the credential store. Implement `FlowContext.GetCredential<T>()`. Update `EmailSendNode` to resolve SMTP credentials by name.
+
+### Step 5 — Implement Custom Node Registration
+
+Create `BikirianEngineOptions.RegisterNode<T>()` that adds custom types to `NodeDescriptorRegistry`.
+
+### Step 6 — Create Extension Methods
+
+```csharp
+public static IServiceCollection AddBikirianEngine(
+    this IServiceCollection services,
+    Action<BikirianEngineOptions> configure);
+
+public static IEndpointRouteBuilder MapBikirianEngineEndpoints(
+    this IEndpointRouteBuilder endpoints);
+```
+
+### Step 7 — Write Unit Tests
+
+Create `tests/Bikiran.Engine.Tests/`. Test:
 
 - WaitNode delay behavior
-- HttpRequestNode retry logic (use mock HTTP handler)
+- HttpRequestNode retry logic and `ExpectValue` validation
 - IfElseNode branch selection
 - WhileLoopNode iteration limit
 - FlowBuilder end-to-end
 - InMemoryFlowLogger record collection
-
-### Step 4 — Implement EfCore Package
-
-Abstract `AppDbContext` to `IFlowRunnerDbContext`. Move `FlowDbLogger`. Write integration tests using SQLite in-memory.
-
-### Step 5 — Implement Email Package
-
-Create `IFlowEmailSender`. Adapt `EmailSendNode`. Write the adapter in the host app.
-
-### Step 6 — Implement Firebase Package
-
-Move `NotificationNode`. Create `IFlowFirebaseInitializer`.
-
-### Step 7 — Implement Scheduling Package
-
-Move `FlowScheduleJob`, `FlowSchedulerService`, `FlowDefinitionRunner`. Create `IFlowSchedulerDbContext`.
+- Custom node registration
+- Credential resolution
 
 ### Step 8 — Local Pack and Test
 
@@ -267,15 +288,11 @@ Move `FlowScheduleJob`, `FlowSchedulerService`, `FlowDefinitionRunner`. Create `
 dotnet pack --configuration Release --output ./nupkgs
 ```
 
-Add a local NuGet source in the web app, install the packages, and verify the app compiles and all flows work.
+Add a local NuGet source in a test app, install the package, and verify all flows work.
 
 ### Step 9 — Publish to NuGet
 
 Set up the GitHub repository and CI/CD. Tag `v1.0.0` to trigger the first publish.
-
-### Step 10 — Migrate In-App Code
-
-Install packages, delete in-app source files, update `AppDbContext` to implement package interfaces, and update DI registration. Run all tests to confirm no regressions.
 
 ---
 
@@ -301,6 +318,10 @@ Services/FlowRunner/
 │   ├── TransformNode.cs
 │   ├── RetryNode.cs
 │   └── ParallelNode.cs
+├── Credentials/
+│   ├── SmtpCredential.cs
+│   ├── GenericCredential.cs
+│   └── CredentialStore.cs
 ├── FlowDefinitionRunner/
 │   ├── FlowDefinitionRunner.cs
 │   ├── NodeDescriptorRegistry.cs
@@ -309,6 +330,8 @@ Services/FlowRunner/
 ├── Scheduling/
 │   ├── FlowScheduleJob.cs
 │   └── FlowSchedulerService.cs
+├── Database/
+│   └── AutoMigrationRunner.cs
 ├── FlowBuilder.cs
 ├── FlowRunner.cs
 └── FlowDbLogger.cs
@@ -318,12 +341,13 @@ Tables/
 ├── FlowNodeLog.cs
 ├── FlowDefinition.cs
 ├── FlowDefinitionRun.cs
-└── FlowSchedule.cs
+├── FlowSchedule.cs
+└── EngineSchemaVersion.cs
 
-ControllersAdm/
-├── FlowRunnerAdmController.cs
-├── FlowDefinitionAdmController.cs
-└── FlowScheduleAdmController.cs
+Controllers/
+├── BikirianEngineController.cs
+├── BikirianEngineDefinitionController.cs
+└── BikirianEngineScheduleController.cs
 
 Models/FlowRunner/V3/
 ├── FlowDefinitionDTOs.cs

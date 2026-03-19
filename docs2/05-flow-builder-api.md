@@ -63,7 +63,6 @@ Provide services and shared state via `.WithContext()`:
 .WithContext(ctx => {
     ctx.DbContext = _context;          // For DatabaseQueryNode
     ctx.HttpContext = HttpContext;      // For capturing caller metadata
-    ctx.EmailSender = _emailSender;    // For EmailSendNode
     ctx.Logger = _logger;              // For structured logging
     ctx.Services = _serviceProvider;   // General-purpose DI access
 })
@@ -150,7 +149,6 @@ var serviceId = await FlowBuilder
     .WithContext(ctx => {
         ctx.DbContext = _context;
         ctx.HttpContext = HttpContext;
-        ctx.EmailSender = _emailSender;
         ctx.Logger = _logger;
     })
     .AddNode(new HttpRequestNode("fetch_order") {
