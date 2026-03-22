@@ -36,12 +36,12 @@ public class SchemaMigrator
             // Ensure all engine tables exist (EF Core handles creation via EnsureCreated equivalent)
             await _db.Database.EnsureCreatedAsync();
 
-            var versionRecord = await _db.EngineSchemaVersion.FirstOrDefaultAsync();
+            var versionRecord = await _db.FlowSchemaVersion.FirstOrDefaultAsync();
 
             if (versionRecord == null)
             {
                 // First-time setup: record the current version
-                _db.EngineSchemaVersion.Add(new EngineSchemaVersion
+                _db.FlowSchemaVersion.Add(new FlowSchemaVersion
                 {
                     Id = 1,
                     SchemaVersion = CurrentSchemaVersion,
@@ -83,7 +83,7 @@ public class SchemaMigrator
     /// Applies incremental migration scripts based on the currently stored schema version.
     /// Add new migration blocks here as the package evolves.
     /// </summary>
-    private Task ApplyMigrationsAsync(EngineSchemaVersion current)
+    private Task ApplyMigrationsAsync(FlowSchemaVersion current)
     {
         // Example future migration block:
         // if (string.Compare(current.SchemaVersion, "1.1.0", StringComparison.Ordinal) < 0)

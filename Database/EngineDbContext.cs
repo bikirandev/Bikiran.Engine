@@ -16,7 +16,7 @@ public class EngineDbContext : DbContext
     public DbSet<FlowDefinition> FlowDefinition => Set<FlowDefinition>();
     public DbSet<FlowDefinitionRun> FlowDefinitionRun => Set<FlowDefinitionRun>();
     public DbSet<FlowSchedule> FlowSchedule => Set<FlowSchedule>();
-    public DbSet<EngineSchemaVersion> EngineSchemaVersion => Set<EngineSchemaVersion>();
+    public DbSet<FlowSchemaVersion> FlowSchemaVersion => Set<FlowSchemaVersion>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

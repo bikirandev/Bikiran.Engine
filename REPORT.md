@@ -114,7 +114,7 @@ Bikiran.Engine/
 │   │   ├── FlowDefinition.cs
 │   │   ├── FlowDefinitionRun.cs
 │   │   ├── FlowSchedule.cs
-│   │   └── EngineSchemaVersion.cs
+│   │   └── FlowSchemaVersion.cs
 │   └── Migration/
 │       └── SchemaMigrator.cs
 │
@@ -268,7 +268,7 @@ Credentials are accessed from within any node via `context.GetCredential<T>(name
 | `FlowDefinition` | `FlowDefinition` | Versioned JSON flow templates |
 | `FlowDefinitionRun` | `FlowDefinitionRun` | Definition → run linkage |
 | `FlowSchedule` | `FlowSchedule` | Cron/interval/once automated triggers |
-| `EngineSchemaVersion` | `EngineSchemaVersion` | Single-row schema version tracker |
+| `FlowSchemaVersion` | `FlowSchemaVersion` | Single-row schema version tracker |
 
 All timestamps are stored as Unix seconds (`BIGINT`). Soft-delete uses `TimeDeleted = 0` (active) or `> 0` (deleted). Unique indexes are applied to `FlowRun.ServiceId`, `(FlowDefinition.DefinitionKey, FlowDefinition.Version)`, and `FlowSchedule.ScheduleKey`.
 
@@ -279,7 +279,7 @@ All timestamps are stored as Unix seconds (`BIGINT`). Soft-delete uses `TimeDele
 `SchemaMigrator` runs on every application startup via `EngineStartupService`:
 
 1. Calls `EnsureCreatedAsync()` to create all tables if they don't exist.
-2. Reads `EngineSchemaVersion` to check the stored schema version.
+2. Reads `FlowSchemaVersion` to check the stored schema version.
 3. If no record exists, inserts version `1.0.0` (first-time setup).
 4. If the version is outdated, incremental migration scripts are applied (extensible via the `ApplyMigrationsAsync` method for future versions).
 5. Updates the version record.
@@ -581,7 +581,7 @@ builder.Services.AddBikiranEngine(options => {
 - `GenericCredential` for arbitrary key-value secrets
 
 **Database (6 tables, auto-migrated)**
-- `FlowRun`, `FlowNodeLog`, `FlowDefinition`, `FlowDefinitionRun`, `FlowSchedule`, `EngineSchemaVersion`
+- `FlowRun`, `FlowNodeLog`, `FlowDefinition`, `FlowDefinitionRun`, `FlowSchedule`, `FlowSchemaVersion`
 - `SchemaMigrator` with `EnsureCreatedAsync` + incremental migration hook
 
 **Flow Definitions**
