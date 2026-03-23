@@ -33,8 +33,10 @@ public class SchemaMigrator
     {
         try
         {
-            // Ensure all engine tables exist (EF Core handles creation via EnsureCreated equivalent)
-            await _db.Database.EnsureCreatedAsync();
+            // Create engine tables if they don't exist.
+            // EnsureCreatedAsync() is not used because it skips table creation
+            // when the database already contains tables from the host application.
+            await CreateTablesIfNotExistAsync();
 
             var versionRecord = await _db.FlowSchemaVersion.FirstOrDefaultAsync();
 
@@ -77,6 +79,150 @@ public class SchemaMigrator
             _logger?.LogError(ex, "Bikiran.Engine: Schema migration failed.");
             throw;
         }
+    }
+
+    /// <summary>
+    /// Creates all engine tables using CREATE TABLE IF NOT EXISTS.
+    /// This is safe for shared databases where EnsureCreatedAsync() would be a no-op.
+    /// </summary>
+    private async Task CreateTablesIfNotExistAsync()
+    {
+        var providerName = _db.Database.ProviderName ?? "";
+        var isMySql = providerName.Contains("MySql", StringComparison.OrdinalIgnoreCase) ||
+                      providerName.Contains("Pomelo", StringComparison.OrdinalIgnoreCase);
+
+        if (isMySql)
+        {
+            await CreateMySqlTablesAsync();
+        }
+        else
+        {
+            // Fallback for non-MySQL providers (InMemory, Postgres, SqlServer, etc.)
+            await _db.Database.EnsureCreatedAsync();
+        }
+    }
+
+    private async Task CreateMySqlTablesAsync()
+    {
+        await _db.Database.ExecuteSqlRawAsync("""
+            CREATE TABLE IF NOT EXISTS `FlowSchemaVersion` (
+                `Id` int NOT NULL,
+                `SchemaVersion` varchar(20) NOT NULL,
+                `AppliedAt` bigint NOT NULL,
+                `PackageVersion` varchar(20) NOT NULL,
+                PRIMARY KEY (`Id`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+            """);
+
+        await _db.Database.ExecuteSqlRawAsync("""
+            CREATE TABLE IF NOT EXISTS `FlowRun` (
+                `Id` bigint NOT NULL AUTO_INCREMENT,
+                `ServiceId` varchar(36) NOT NULL,
+                `FlowName` varchar(100) NOT NULL,
+                `Status` varchar(20) NOT NULL DEFAULT 'pending',
+                `TriggerSource` varchar(100) NOT NULL DEFAULT '',
+                `Config` longtext NOT NULL,
+                `ContextMeta` longtext NOT NULL,
+                `TotalNodes` int NOT NULL DEFAULT 0,
+                `CompletedNodes` int NOT NULL DEFAULT 0,
+                `ErrorMessage` varchar(500) NULL,
+                `StartedAt` bigint NOT NULL DEFAULT 0,
+                `CompletedAt` bigint NOT NULL DEFAULT 0,
+                `DurationMs` bigint NOT NULL DEFAULT 0,
+                `CreatorUserId` bigint NOT NULL DEFAULT 0,
+                `IpString` varchar(100) NOT NULL DEFAULT '',
+                `TimeCreated` bigint NOT NULL DEFAULT 0,
+                `TimeUpdated` bigint NOT NULL DEFAULT 0,
+                `TimeDeleted` bigint NOT NULL DEFAULT 0,
+                PRIMARY KEY (`Id`),
+                UNIQUE INDEX `IX_FlowRun_ServiceId` (`ServiceId`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+            """);
+
+        await _db.Database.ExecuteSqlRawAsync("""
+            CREATE TABLE IF NOT EXISTS `FlowNodeLog` (
+                `Id` bigint NOT NULL AUTO_INCREMENT,
+                `ServiceId` varchar(36) NOT NULL,
+                `NodeName` varchar(100) NOT NULL,
+                `NodeType` varchar(50) NOT NULL,
+                `Sequence` int NOT NULL DEFAULT 0,
+                `Status` varchar(20) NOT NULL DEFAULT 'pending',
+                `InputData` longtext NOT NULL,
+                `OutputData` longtext NOT NULL,
+                `ErrorMessage` varchar(500) NULL,
+                `BranchTaken` varchar(20) NULL,
+                `RetryCount` int NOT NULL DEFAULT 0,
+                `StartedAt` bigint NOT NULL DEFAULT 0,
+                `CompletedAt` bigint NOT NULL DEFAULT 0,
+                `DurationMs` bigint NOT NULL DEFAULT 0,
+                `TimeCreated` bigint NOT NULL DEFAULT 0,
+                `TimeUpdated` bigint NOT NULL DEFAULT 0,
+                PRIMARY KEY (`Id`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+            """);
+
+        await _db.Database.ExecuteSqlRawAsync("""
+            CREATE TABLE IF NOT EXISTS `FlowDefinition` (
+                `Id` bigint NOT NULL AUTO_INCREMENT,
+                `DefinitionKey` varchar(100) NOT NULL,
+                `DisplayName` varchar(200) NOT NULL,
+                `Description` longtext NOT NULL,
+                `Version` int NOT NULL DEFAULT 1,
+                `IsActive` tinyint(1) NOT NULL DEFAULT 1,
+                `FlowJson` longtext NOT NULL,
+                `Tags` varchar(500) NOT NULL DEFAULT '',
+                `LastModifiedBy` bigint NOT NULL DEFAULT 0,
+                `TimeCreated` bigint NOT NULL DEFAULT 0,
+                `TimeUpdated` bigint NOT NULL DEFAULT 0,
+                `TimeDeleted` bigint NOT NULL DEFAULT 0,
+                PRIMARY KEY (`Id`),
+                UNIQUE INDEX `IX_FlowDefinition_DefinitionKey_Version` (`DefinitionKey`, `Version`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+            """);
+
+        await _db.Database.ExecuteSqlRawAsync("""
+            CREATE TABLE IF NOT EXISTS `FlowDefinitionRun` (
+                `Id` bigint NOT NULL AUTO_INCREMENT,
+                `FlowRunServiceId` varchar(36) NOT NULL,
+                `DefinitionId` bigint NOT NULL DEFAULT 0,
+                `DefinitionKey` varchar(100) NOT NULL,
+                `DefinitionVersion` int NOT NULL DEFAULT 0,
+                `Parameters` longtext NOT NULL,
+                `TriggerUserId` bigint NOT NULL DEFAULT 0,
+                `TriggerSource` varchar(100) NOT NULL DEFAULT '',
+                `TimeCreated` bigint NOT NULL DEFAULT 0,
+                PRIMARY KEY (`Id`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+            """);
+
+        await _db.Database.ExecuteSqlRawAsync("""
+            CREATE TABLE IF NOT EXISTS `FlowSchedule` (
+                `Id` bigint NOT NULL AUTO_INCREMENT,
+                `ScheduleKey` varchar(100) NOT NULL,
+                `DisplayName` varchar(200) NOT NULL,
+                `DefinitionKey` varchar(100) NOT NULL,
+                `ScheduleType` varchar(20) NOT NULL,
+                `CronExpression` varchar(100) NULL,
+                `IntervalMinutes` int NULL,
+                `RunOnceAt` bigint NULL,
+                `DefaultParameters` longtext NOT NULL,
+                `IsActive` tinyint(1) NOT NULL DEFAULT 1,
+                `TimeZone` varchar(50) NOT NULL DEFAULT 'UTC',
+                `MaxConcurrent` int NOT NULL DEFAULT 1,
+                `LastRunAt` bigint NOT NULL DEFAULT 0,
+                `NextRunAt` bigint NOT NULL DEFAULT 0,
+                `LastRunServiceId` varchar(36) NULL,
+                `LastRunStatus` varchar(20) NULL,
+                `CreatedBy` bigint NOT NULL DEFAULT 0,
+                `TimeCreated` bigint NOT NULL DEFAULT 0,
+                `TimeUpdated` bigint NOT NULL DEFAULT 0,
+                `TimeDeleted` bigint NOT NULL DEFAULT 0,
+                PRIMARY KEY (`Id`),
+                UNIQUE INDEX `IX_FlowSchedule_ScheduleKey` (`ScheduleKey`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+            """);
+
+        _logger?.LogInformation("Bikiran.Engine: Ensured all engine tables exist.");
     }
 
     /// <summary>
