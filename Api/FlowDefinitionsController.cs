@@ -211,18 +211,4 @@ public class FlowDefinitionsController : ControllerBase
 
         return Ok(new { error = false, data = runs });
     }
-
-    /// <summary>List all runs triggered from this definition.</summary>
-    [HttpGet("{key}/runs")]
-    public async Task<IActionResult> GetRuns(string key, [FromQuery] int page = 1, [FromQuery] int pageSize = 20)
-    {
-        var runs = await _db.FlowDefinitionRun
-            .Where(r => r.DefinitionKey == key)
-            .OrderByDescending(r => r.TimeCreated)
-            .Skip((page - 1) * pageSize)
-            .Take(pageSize)
-            .ToListAsync();
-
-        return Ok(new { error = false, data = runs });
-    }
 }
