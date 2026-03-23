@@ -1,5 +1,6 @@
 using Bikiran.Engine.Database;
 using Bikiran.Engine.Database.Entities;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System.Text.Json;
@@ -130,8 +131,7 @@ internal class FlowRunner
         var db = scope?.ServiceProvider.GetService<EngineDbContext>();
         if (db == null) return;
 
-        var run = await db.FlowRun.FindAsync(serviceId) ??
-                  db.FlowRun.FirstOrDefault(r => r.ServiceId == serviceId);
+        var run = await db.FlowRun.FirstOrDefaultAsync(r => r.ServiceId == serviceId);
         if (run == null) return;
 
         run.Status = status;
@@ -154,7 +154,7 @@ internal class FlowRunner
         var db = scope?.ServiceProvider.GetService<EngineDbContext>();
         if (db == null) return;
 
-        var run = db.FlowRun.FirstOrDefault(r => r.ServiceId == serviceId);
+        var run = await db.FlowRun.FirstOrDefaultAsync(r => r.ServiceId == serviceId);
         if (run == null) return;
 
         run.CompletedNodes = completedNodes;
@@ -192,8 +192,8 @@ internal class FlowRunner
         var db = scope?.ServiceProvider.GetService<EngineDbContext>();
         if (db == null) return;
 
-        var log = db.FlowNodeLog
-            .FirstOrDefault(l => l.ServiceId == serviceId && l.Sequence == sequence);
+        var log = await db.FlowNodeLog
+            .FirstOrDefaultAsync(l => l.ServiceId == serviceId && l.Sequence == sequence);
         if (log == null) return;
 
         log.Status = status;
