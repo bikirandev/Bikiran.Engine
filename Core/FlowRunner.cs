@@ -26,8 +26,9 @@ internal class FlowRunner
         cts.CancelAfter(context.Config.MaxExecutionTime);
         var ct = cts.Token;
 
+        var runStartedAtMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
         await UpdateRunStatusAsync(context.ServiceId, "running",
-            startedAt: DateTimeOffset.UtcNow.ToUnixTimeSeconds());
+            startedAt: runStartedAtMs / 1000);
 
         var completedNodes = 0;
         string? flowError = null;
@@ -112,18 +113,19 @@ internal class FlowRunner
             context.Logger?.LogError(ex, "Unhandled exception in flow {FlowName}", context.FlowName);
         }
 
-        var completedAt = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        var runCompletedAtMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
         var status = flowError == null ? "completed" : "failed";
 
         await UpdateRunStatusAsync(context.ServiceId, status,
-            completedAt: completedAt,
+            completedAt: runCompletedAtMs / 1000,
+            durationMs: runCompletedAtMs - runStartedAtMs,
             errorMessage: flowError);
     }
 
     // --- Database helpers ---
 
     private async Task UpdateRunStatusAsync(string serviceId, string status,
-        long? startedAt = null, long? completedAt = null, string? errorMessage = null)
+        long? startedAt = null, long? completedAt = null, long? durationMs = null, string? errorMessage = null)
     {
         if (_db == null) return;
 
@@ -134,11 +136,8 @@ internal class FlowRunner
         run.TimeUpdated = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
 
         if (startedAt.HasValue) run.StartedAt = startedAt.Value;
-        if (completedAt.HasValue)
-        {
-            run.CompletedAt = completedAt.Value;
-            run.DurationMs = (run.CompletedAt - run.StartedAt) * 1000;
-        }
+        if (completedAt.HasValue) run.CompletedAt = completedAt.Value;
+        if (durationMs.HasValue) run.DurationMs = durationMs.Value;
         if (errorMessage != null) run.ErrorMessage = errorMessage[..Math.Min(errorMessage.Length, 500)];
 
         await _db.SaveChangesAsync();
