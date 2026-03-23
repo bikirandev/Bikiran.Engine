@@ -11,10 +11,10 @@ namespace Bikiran.Engine.Database.Migration;
 public class SchemaMigrator
 {
     /// <summary>Current schema version embedded in this package version.</summary>
-    public const string CurrentSchemaVersion = "1.0.0";
+    public const string CurrentSchemaVersion = "1.0.1";
 
     /// <summary>NuGet package version.</summary>
-    public const string PackageVersion = "1.0.0";
+    public const string PackageVersion = "1.0.1";
 
     private readonly EngineDbContext _db;
     private readonly ILogger<SchemaMigrator>? _logger;
@@ -97,7 +97,10 @@ public class SchemaMigrator
         }
         else
         {
-            // Fallback for non-MySQL providers (InMemory, Postgres, SqlServer, etc.)
+            // Fallback for non-MySQL providers. Note: EnsureCreatedAsync() is a no-op when
+            // the database already contains tables from the host application; engine tables
+            // may need to be created manually for shared-database deployments on non-MySQL providers.
+            _logger?.LogDebug("Bikiran.Engine: Using EnsureCreatedAsync for non-MySQL provider ({Provider}).", providerName);
             await _db.Database.EnsureCreatedAsync();
         }
     }

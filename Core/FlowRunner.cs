@@ -1,9 +1,7 @@
 using Bikiran.Engine.Database;
 using Bikiran.Engine.Database.Entities;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using System.Text.Json;
 
 namespace Bikiran.Engine.Core;
 
@@ -12,11 +10,11 @@ namespace Bikiran.Engine.Core;
 /// </summary>
 internal class FlowRunner
 {
-    private readonly IServiceProvider? _serviceProvider;
+    private readonly EngineDbContext? _db;
 
-    internal FlowRunner(IServiceProvider? serviceProvider)
+    internal FlowRunner(EngineDbContext? db)
     {
-        _serviceProvider = serviceProvider;
+        _db = db;
     }
 
     /// <summary>
@@ -127,11 +125,9 @@ internal class FlowRunner
     private async Task UpdateRunStatusAsync(string serviceId, string status,
         long? startedAt = null, long? completedAt = null, string? errorMessage = null)
     {
-        using var scope = _serviceProvider?.CreateScope();
-        var db = scope?.ServiceProvider.GetService<EngineDbContext>();
-        if (db == null) return;
+        if (_db == null) return;
 
-        var run = await db.FlowRun.FirstOrDefaultAsync(r => r.ServiceId == serviceId);
+        var run = await _db.FlowRun.FirstOrDefaultAsync(r => r.ServiceId == serviceId);
         if (run == null) return;
 
         run.Status = status;
@@ -145,28 +141,24 @@ internal class FlowRunner
         }
         if (errorMessage != null) run.ErrorMessage = errorMessage[..Math.Min(errorMessage.Length, 500)];
 
-        await db.SaveChangesAsync();
+        await _db.SaveChangesAsync();
     }
 
     private async Task UpdateRunProgressAsync(string serviceId, int completedNodes)
     {
-        using var scope = _serviceProvider?.CreateScope();
-        var db = scope?.ServiceProvider.GetService<EngineDbContext>();
-        if (db == null) return;
+        if (_db == null) return;
 
-        var run = await db.FlowRun.FirstOrDefaultAsync(r => r.ServiceId == serviceId);
+        var run = await _db.FlowRun.FirstOrDefaultAsync(r => r.ServiceId == serviceId);
         if (run == null) return;
 
         run.CompletedNodes = completedNodes;
         run.TimeUpdated = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-        await db.SaveChangesAsync();
+        await _db.SaveChangesAsync();
     }
 
     private async Task CreateNodeLogAsync(string serviceId, IFlowNode node, int sequence, string status, long startedAtMs)
     {
-        using var scope = _serviceProvider?.CreateScope();
-        var db = scope?.ServiceProvider.GetService<EngineDbContext>();
-        if (db == null) return;
+        if (_db == null) return;
 
         var log = new FlowNodeLog
         {
@@ -180,19 +172,17 @@ internal class FlowRunner
             TimeUpdated = DateTimeOffset.UtcNow.ToUnixTimeSeconds()
         };
 
-        await db.FlowNodeLog.AddAsync(log);
-        await db.SaveChangesAsync();
+        await _db.FlowNodeLog.AddAsync(log);
+        await _db.SaveChangesAsync();
     }
 
     private async Task UpdateNodeLogAsync(string serviceId, string nodeName, int sequence,
         string status, string? errorMessage, string? branchTaken, int retryCount,
         long completedAt, long durationMs)
     {
-        using var scope = _serviceProvider?.CreateScope();
-        var db = scope?.ServiceProvider.GetService<EngineDbContext>();
-        if (db == null) return;
+        if (_db == null) return;
 
-        var log = await db.FlowNodeLog
+        var log = await _db.FlowNodeLog
             .FirstOrDefaultAsync(l => l.ServiceId == serviceId && l.Sequence == sequence);
         if (log == null) return;
 
@@ -206,6 +196,6 @@ internal class FlowRunner
         if (errorMessage != null)
             log.ErrorMessage = errorMessage[..Math.Min(errorMessage.Length, 500)];
 
-        await db.SaveChangesAsync();
+        await _db.SaveChangesAsync();
     }
 }

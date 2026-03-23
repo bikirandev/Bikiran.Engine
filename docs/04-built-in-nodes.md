@@ -273,7 +273,7 @@ Reshapes or derives new values from existing context data. Does not make any ext
 | `OutputKey`        | string                                                   | `"{Name}_output"` | Context key for the result                 |
 | `SkipIfNullOutput` | bool                                                     | `true`            | Skip storing the key if the result is null |
 
-Provide either `Transform` or `TransformAsync` (not both). If both are set, `TransformAsync` takes priority. This node never fails.
+Provide either `Transform` or `TransformAsync` (not both). If both are set, `TransformAsync` takes priority. This node fails if neither delegate is set.
 
 ```csharp
 new TransformNode("build_message") {

@@ -1,7 +1,7 @@
 # Bikiran.Engine — NuGet Package Development Report
 
 **Package:** `Bikiran.Engine`  
-**Version:** `1.0.0`  
+**Version:** `1.0.1`  
 **Target Framework:** .NET 8.0  
 **Date:** 2026-03-19  
 **Author:** Bikiran Dev
@@ -85,7 +85,7 @@ Bikiran.Engine/
 │   ├── NodeResult.cs              # Ok() / Fail() outcome
 │   ├── FlowContext.cs             # Shared state, credentials, DI
 │   ├── FlowConfig.cs              # MaxExecutionTime, OnFailure, logging
-│   ├── OnFailureAction.cs         # Stop / Continue / Retry enum
+│   ├── OnFailureAction.cs         # Stop / Continue enum
 │   ├── ContextMeta.cs             # HTTP request snapshot for audit
 │   ├── FlowBuilder.cs             # Fluent builder + StartAsync
 │   └── FlowRunner.cs              # Sequential execution engine
@@ -157,7 +157,9 @@ Bikiran.Engine/
 The core layer defines the fundamental contracts and execution model.
 
 #### `IFlowNode`
+
 Every node — built-in or custom — implements this interface:
+
 ```csharp
 public interface IFlowNode
 {
@@ -168,23 +170,30 @@ public interface IFlowNode
 ```
 
 #### `NodeResult`
+
 Immutable value object returned by every node:
+
 ```csharp
 NodeResult.Ok(output)          // success with optional output value
 NodeResult.Fail("message")     // failure with a descriptive message
 ```
 
 #### `FlowContext`
+
 Shared dictionary-based state that every node can read from and write to:
+
 - `Set(key, value)` / `Get<T>(key)` / `Has(key)` for shared data
 - `DbContext`, `HttpContext`, `Logger`, `Services` for injected services
 - `GetCredential<T>(name)` for retrieving named credentials
 
 #### `FlowConfig`
-Runtime options: `MaxExecutionTime` (default 10 min), `OnFailure` (Stop/Continue/Retry), `EnableNodeLogging`, `TriggerSource`.
+
+Runtime options: `MaxExecutionTime` (default 10 min), `OnFailure` (Stop/Continue), `EnableNodeLogging`, `TriggerSource`.
 
 #### `FlowBuilder`
+
 Fluent builder with:
+
 - `FlowBuilder.Create(name)` — start a new builder
 - `.Configure(action)` — set runtime options
 - `.WithContext(action)` — inject services
@@ -193,7 +202,9 @@ Fluent builder with:
 - `.StartAndWaitAsync()` — start and block until completion
 
 #### `FlowRunner`
+
 Internal executor that:
+
 1. Updates `FlowRun.Status` → `"running"`
 2. Runs each node in sequence with timeout protection
 3. Creates/updates `FlowNodeLog` records for each step
@@ -206,17 +217,17 @@ Internal executor that:
 
 All 9 built-in node types are fully implemented:
 
-| Node | Type Label | Key Properties |
-|---|---|---|
-| `WaitNode` | `Wait` | `DelayMs` (default 1000 ms) |
-| `HttpRequestNode` | `HttpRequest` | `Url`, `Method`, `Headers`, `Body`, `MaxRetries`, `ExpectStatusCode`, `ExpectValue`, `OutputKey` |
-| `EmailSendNode` | `EmailSend` | `ToEmail`, `Subject`, `CredentialName`, `Template`, `HtmlBody`, `HtmlBodyResolver` |
-| `IfElseNode` | `IfElse` | `Condition`, `TrueBranch`, `FalseBranch` |
-| `WhileLoopNode` | `WhileLoop` | `Condition`, `Body`, `MaxIterations` (default 10), `IterationDelayMs` |
-| `DatabaseQueryNode<T>` | `DatabaseQuery` | `Query`, `OutputKey`, `FailIfNull`, `NullErrorMessage` |
-| `TransformNode` | `Transform` | `Transform`, `TransformAsync`, `OutputKey`, `SkipIfNullOutput` |
-| `RetryNode` | `Retry` | `Inner`, `MaxAttempts`, `DelayMs`, `BackoffMultiplier`, `RetryOn` |
-| `ParallelNode` | `Parallel` | `Branches`, `WaitAll`, `AbortOnBranchFailure` |
+| Node                   | Type Label      | Key Properties                                                                                   |
+| ---------------------- | --------------- | ------------------------------------------------------------------------------------------------ |
+| `WaitNode`             | `Wait`          | `DelayMs` (default 1000 ms)                                                                      |
+| `HttpRequestNode`      | `HttpRequest`   | `Url`, `Method`, `Headers`, `Body`, `MaxRetries`, `ExpectStatusCode`, `ExpectValue`, `OutputKey` |
+| `EmailSendNode`        | `EmailSend`     | `ToEmail`, `Subject`, `CredentialName`, `Template`, `HtmlBody`, `HtmlBodyResolver`               |
+| `IfElseNode`           | `IfElse`        | `Condition`, `TrueBranch`, `FalseBranch`                                                         |
+| `WhileLoopNode`        | `WhileLoop`     | `Condition`, `Body`, `MaxIterations` (default 10), `IterationDelayMs`                            |
+| `DatabaseQueryNode<T>` | `DatabaseQuery` | `Query`, `OutputKey`, `FailIfNull`, `NullErrorMessage`                                           |
+| `TransformNode`        | `Transform`     | `Transform`, `TransformAsync`, `OutputKey`, `SkipIfNullOutput`                                   |
+| `RetryNode`            | `Retry`         | `Inner`, `MaxAttempts`, `DelayMs`, `BackoffMultiplier`, `RetryOn`                                |
+| `ParallelNode`         | `Parallel`      | `Branches`, `WaitAll`, `AbortOnBranchFailure`                                                    |
 
 **Notable implementation details:**
 
@@ -250,9 +261,9 @@ Credentials are accessed from within any node via `context.GetCredential<T>(name
 
 **Credential types:**
 
-| Type | Purpose |
-|---|---|
-| `SmtpCredential` | SMTP settings for EmailSendNode |
+| Type                | Purpose                                       |
+| ------------------- | --------------------------------------------- |
+| `SmtpCredential`    | SMTP settings for EmailSendNode               |
 | `GenericCredential` | Key-value dictionary for any external service |
 
 ---
@@ -261,14 +272,14 @@ Credentials are accessed from within any node via `context.GetCredential<T>(name
 
 `EngineDbContext` manages 6 tables exclusively for the engine. The host application's `DbContext` is never touched.
 
-| Table | Entity | Purpose |
-|---|---|---|
-| `FlowRun` | `FlowRun` | One record per workflow execution |
-| `FlowNodeLog` | `FlowNodeLog` | One record per node within a run |
-| `FlowDefinition` | `FlowDefinition` | Versioned JSON flow templates |
-| `FlowDefinitionRun` | `FlowDefinitionRun` | Definition → run linkage |
-| `FlowSchedule` | `FlowSchedule` | Cron/interval/once automated triggers |
-| `FlowSchemaVersion` | `FlowSchemaVersion` | Single-row schema version tracker |
+| Table               | Entity              | Purpose                               |
+| ------------------- | ------------------- | ------------------------------------- |
+| `FlowRun`           | `FlowRun`           | One record per workflow execution     |
+| `FlowNodeLog`       | `FlowNodeLog`       | One record per node within a run      |
+| `FlowDefinition`    | `FlowDefinition`    | Versioned JSON flow templates         |
+| `FlowDefinitionRun` | `FlowDefinitionRun` | Definition → run linkage              |
+| `FlowSchedule`      | `FlowSchedule`      | Cron/interval/once automated triggers |
+| `FlowSchemaVersion` | `FlowSchemaVersion` | Single-row schema version tracker     |
 
 All timestamps are stored as Unix seconds (`BIGINT`). Soft-delete uses `TimeDeleted = 0` (active) or `> 0` (deleted). Unique indexes are applied to `FlowRun.ServiceId`, `(FlowDefinition.DefinitionKey, FlowDefinition.Version)`, and `FlowSchedule.ScheduleKey`.
 
@@ -278,7 +289,7 @@ All timestamps are stored as Unix seconds (`BIGINT`). Soft-delete uses `TimeDele
 
 `SchemaMigrator` runs on every application startup via `EngineStartupService`:
 
-1. Calls `EnsureCreatedAsync()` to create all tables if they don't exist.
+1. Creates engine tables using provider-specific SQL (MySQL) or `EnsureCreatedAsync()` (other providers).
 2. Reads `FlowSchemaVersion` to check the stored schema version.
 3. If no record exists, inserts version `1.0.0` (first-time setup).
 4. If the version is outdated, incremental migration scripts are applied (extensible via the `ApplyMigrationsAsync` method for future versions).
@@ -293,6 +304,7 @@ This means you never run `dotnet ef migrations add` for engine tables and the sc
 Flow definitions allow admins to create and manage reusable flow templates as JSON — no code changes or redeployment required.
 
 **`FlowDefinitionParser`** converts a JSON definition string into a `FlowBuilder`:
+
 - Supports `{{placeholderKey}}` substitution in all string fields
 - Builds built-in node types: `Wait`, `HttpRequest`, `EmailSend`, `Transform`
 - Supports custom node types registered via `options.RegisterNode<T>(typeName)`
@@ -302,6 +314,7 @@ Flow definitions allow admins to create and manage reusable flow templates as JS
 **`FlowDefinitionRunner`** loads the latest active version of a definition from the database, resolves parameters (including built-in date/time placeholders: `{{today_date}}`, `{{unix_now}}`, `{{year}}`, `{{month}}`), starts execution, and records a `FlowDefinitionRun` link.
 
 **DTOs:**
+
 - `FlowDefinitionSaveRequestDTO` — create/update definitions
 - `FlowDefinitionTriggerRequestDTO` — trigger with runtime parameters
 - `FlowDefinitionTriggerResponseDTO` — response with `ServiceId`, key, version
@@ -312,23 +325,26 @@ Flow definitions allow admins to create and manage reusable flow templates as JS
 
 Three schedule types are supported via Quartz.NET:
 
-| Type | Description |
-|---|---|
-| `cron` | Quartz 6-field cron expression (e.g., `"0 0 8 * * ?"` for daily at 8 AM) |
-| `interval` | Repeats every N minutes |
-| `once` | Fires once at a specific Unix timestamp |
+| Type       | Description                                                              |
+| ---------- | ------------------------------------------------------------------------ |
+| `cron`     | Quartz 6-field cron expression (e.g., `"0 0 8 * * ?"` for daily at 8 AM) |
+| `interval` | Repeats every N minutes                                                  |
+| `once`     | Fires once at a specific Unix timestamp                                  |
 
 **`FlowSchedulerService`** handles Quartz registration:
+
 - `InitializeAsync()` — loads all active schedules on startup and registers them with Quartz
 - `RegisterScheduleAsync(schedule)` — hot-add without restart
 - `UnregisterScheduleAsync(key)` — remove from Quartz
 - `GetNextFireTimeAsync(key)` — returns next trigger time
 
 **`ScheduledFlowJob`** is the Quartz `IJob` implementation:
+
 - Decorated with `[DisallowConcurrentExecution]` to enforce `MaxConcurrent = 1`
 - Loads schedule parameters, calls `FlowDefinitionRunner.TriggerAsync()`, updates `LastRunAt` / `LastRunStatus`
 
 **Misfire handling:**
+
 - Cron: `WithMisfireHandlingInstructionDoNothing` (skip missed fires)
 - Interval: `WithMisfireHandlingInstructionNextWithRemainingCount` (continue from now)
 - Once: `WithMisfireHandlingInstructionFireNow` (fire on restart if missed)
@@ -341,40 +357,40 @@ All endpoints are under `/api/bikiran-engine/` and are activated by `app.MapBiki
 
 #### Flow Runs — `/api/bikiran-engine/runs`
 
-| Method | Route | Description |
-|---|---|---|
-| `GET` | `/runs?page=1&pageSize=20` | List all runs, paginated |
-| `GET` | `/runs/{serviceId}` | Full run details with node logs and progress% |
-| `GET` | `/runs/{serviceId}/progress` | Current progress percentage |
-| `GET` | `/runs/status/{status}` | Filter by status |
-| `DELETE` | `/runs/{serviceId}` | Soft-delete a run |
+| Method   | Route                        | Description                                   |
+| -------- | ---------------------------- | --------------------------------------------- |
+| `GET`    | `/runs?page=1&pageSize=20`   | List all runs, paginated                      |
+| `GET`    | `/runs/{serviceId}`          | Full run details with node logs and progress% |
+| `GET`    | `/runs/{serviceId}/progress` | Current progress percentage                   |
+| `GET`    | `/runs/status/{status}`      | Filter by status                              |
+| `DELETE` | `/runs/{serviceId}`          | Soft-delete a run                             |
 
 #### Flow Definitions — `/api/bikiran-engine/definitions`
 
-| Method | Route | Description |
-|---|---|---|
-| `GET` | `/definitions` | List all definitions (latest version per key) |
-| `GET` | `/definitions/{key}` | Get latest version |
-| `GET` | `/definitions/{key}/versions` | All versions |
-| `POST` | `/definitions` | Create a new definition |
-| `PUT` | `/definitions/{key}` | Update (auto-increments version) |
-| `PATCH` | `/definitions/{key}/toggle` | Enable/disable |
-| `DELETE` | `/definitions/{key}` | Soft-delete all versions |
-| `POST` | `/definitions/{key}/trigger` | Trigger with parameters |
-| `GET` | `/definitions/{key}/runs` | Runs from this definition |
+| Method   | Route                         | Description                                   |
+| -------- | ----------------------------- | --------------------------------------------- |
+| `GET`    | `/definitions`                | List all definitions (latest version per key) |
+| `GET`    | `/definitions/{key}`          | Get latest version                            |
+| `GET`    | `/definitions/{key}/versions` | All versions                                  |
+| `POST`   | `/definitions`                | Create a new definition                       |
+| `PUT`    | `/definitions/{key}`          | Update (auto-increments version)              |
+| `PATCH`  | `/definitions/{key}/toggle`   | Enable/disable                                |
+| `DELETE` | `/definitions/{key}`          | Soft-delete all versions                      |
+| `POST`   | `/definitions/{key}/trigger`  | Trigger with parameters                       |
+| `GET`    | `/definitions/{key}/runs`     | Runs from this definition                     |
 
 #### Flow Schedules — `/api/bikiran-engine/schedules`
 
-| Method | Route | Description |
-|---|---|---|
-| `GET` | `/schedules` | List all schedules |
-| `GET` | `/schedules/{key}` | Details + next fire time |
-| `POST` | `/schedules` | Create a schedule |
-| `PUT` | `/schedules/{key}` | Update + re-register in Quartz |
-| `PATCH` | `/schedules/{key}/toggle` | Enable/disable (pause/resume in Quartz) |
-| `DELETE` | `/schedules/{key}` | Soft-delete + unregister from Quartz |
-| `POST` | `/schedules/{key}/run-now` | Trigger immediately |
-| `GET` | `/schedules/{key}/runs` | Runs triggered by this schedule |
+| Method   | Route                      | Description                             |
+| -------- | -------------------------- | --------------------------------------- |
+| `GET`    | `/schedules`               | List all schedules                      |
+| `GET`    | `/schedules/{key}`         | Details + next fire time                |
+| `POST`   | `/schedules`               | Create a schedule                       |
+| `PUT`    | `/schedules/{key}`         | Update + re-register in Quartz          |
+| `PATCH`  | `/schedules/{key}/toggle`  | Enable/disable (pause/resume in Quartz) |
+| `DELETE` | `/schedules/{key}`         | Soft-delete + unregister from Quartz    |
+| `POST`   | `/schedules/{key}/run-now` | Trigger immediately                     |
+| `GET`    | `/schedules/{key}/runs`    | Runs triggered by this schedule         |
 
 ---
 
@@ -383,6 +399,7 @@ All endpoints are under `/api/bikiran-engine/` and are activated by `app.MapBiki
 #### `AddBikiranEngine(options, dbOptionsAction?)`
 
 Registers all engine services:
+
 - `EngineDbContext` (with optional `DbContextOptionsBuilder` override for production DB providers)
 - `FlowDefinitionRunner` (scoped)
 - `FlowDefinitionParser` (singleton — holds static custom node registry)
@@ -399,17 +416,17 @@ Calls `endpoints.MapControllers()` to activate the three admin controllers.
 
 ## Dependencies
 
-| Package | Version | Purpose |
-|---|---|---|
-| `Microsoft.EntityFrameworkCore` | 8.0.0 | Database persistence |
-| `Microsoft.EntityFrameworkCore.Relational` | 8.0.0 | Relational database support |
-| `Microsoft.EntityFrameworkCore.InMemory` | 8.0.0 | In-memory DB for testing/demos |
-| `Microsoft.Extensions.DependencyInjection.Abstractions` | 8.0.0 | DI contracts |
-| `Microsoft.Extensions.Logging.Abstractions` | 8.0.0 | Logging contracts |
-| `Microsoft.Extensions.Hosting.Abstractions` | 8.0.0 | `IHostedService` |
-| `Microsoft.AspNetCore.App` (framework ref) | 8.0 | Admin API controllers + routing |
-| `Quartz.Extensions.Hosting` | 3.10.0 | Cron/interval/once scheduling |
-| `MailKit` | 4.3.0 | SMTP email sending |
+| Package                                                 | Version | Purpose                         |
+| ------------------------------------------------------- | ------- | ------------------------------- |
+| `Microsoft.EntityFrameworkCore`                         | 8.0.0   | Database persistence            |
+| `Microsoft.EntityFrameworkCore.Relational`              | 8.0.0   | Relational database support     |
+| `Microsoft.EntityFrameworkCore.InMemory`                | 8.0.0   | In-memory DB for testing/demos  |
+| `Microsoft.Extensions.DependencyInjection.Abstractions` | 8.0.0   | DI contracts                    |
+| `Microsoft.Extensions.Logging.Abstractions`             | 8.0.0   | Logging contracts               |
+| `Microsoft.Extensions.Hosting.Abstractions`             | 8.0.0   | `IHostedService`                |
+| `Microsoft.AspNetCore.App` (framework ref)              | 8.0     | Admin API controllers + routing |
+| `Quartz.Extensions.Hosting`                             | 3.10.0  | Cron/interval/once scheduling   |
+| `MailKit`                                               | 4.3.0   | SMTP email sending              |
 
 No known security vulnerabilities in any dependency (verified against GitHub Advisory Database before inclusion).
 
@@ -557,15 +574,35 @@ builder.Services.AddBikiranEngine(options => {
 
 ## Update Log / Version History
 
+### v1.0.1 — 2026-03-23
+
+**Bug Fixes**
+
+- Fixed `ParallelNode` passing the wrong `CancellationToken` to branches — `AbortOnBranchFailure` now correctly cancels running branch nodes
+- Fixed `FlowBuilder.StartAsync()` silently swallowing exceptions from fire-and-forget background flows
+- Fixed `FlowBuilder.PrepareAsync()` leaking the DI scope — scopes are now properly disposed after flow completion
+- Fixed `EngineStartupService` not calling `FlowSchedulerService.InitializeAsync()` — active schedules are now loaded into Quartz on startup
+- Added missing `GET /definitions/{key}/runs` endpoint to `FlowDefinitionsController`
+- Fixed `SchemaMigrator.PackageVersion` still reporting `1.0.0`
+
+**Improvements**
+
+- `FlowRunner` now reuses a single `EngineDbContext` instead of creating a new DI scope per database operation
+- `FlowDefinitionParser` custom node registry changed to `ConcurrentDictionary` for thread-safe registration
+- Removed unused `OnFailureAction.Retry` enum value (use `RetryNode` for retry behavior)
+- Added warning log for non-MySQL providers using `EnsureCreatedAsync` fallback
+
 ### v1.0.0 — 2026-03-19 (Initial Release)
 
 **Core Engine**
+
 - `FlowBuilder` fluent API with `StartAsync()` and `StartAndWaitAsync()`
 - `FlowRunner` sequential executor with timeout, per-node logging, and failure strategies
 - `FlowContext` shared state with credential access and DI services
-- `OnFailureAction` enum: `Stop`, `Continue`, `Retry`
+- `OnFailureAction` enum: `Stop`, `Continue`
 
 **Built-in Nodes (9)**
+
 - `WaitNode` — configurable delay
 - `HttpRequestNode` — full retry loop, JSON response validation with expression evaluator
 - `EmailSendNode` — MailKit SMTP, template/HTML/text bodies, resolver delegates
@@ -577,18 +614,22 @@ builder.Services.AddBikiranEngine(options => {
 - `ParallelNode` — `Task.WhenAll` execution, `AbortOnBranchFailure` support
 
 **Credentials**
+
 - `SmtpCredential` for SMTP email
 - `GenericCredential` for arbitrary key-value secrets
 
 **Database (6 tables, auto-migrated)**
+
 - `FlowRun`, `FlowNodeLog`, `FlowDefinition`, `FlowDefinitionRun`, `FlowSchedule`, `FlowSchemaVersion`
 - `SchemaMigrator` with `EnsureCreatedAsync` + incremental migration hook
 
 **Flow Definitions**
+
 - `FlowDefinitionParser` — JSON → `FlowBuilder` with `{{placeholder}}` substitution
 - `FlowDefinitionRunner` — load latest active version, built-in date/time placeholders, trigger and record
 
 **Scheduling (Quartz.NET)**
+
 - `FlowSchedulerService` — `InitializeAsync`, hot `RegisterScheduleAsync`, `UnregisterScheduleAsync`
 - `ScheduledFlowJob` — `[DisallowConcurrentExecution]` Quartz job
 - Schedule types: `cron`, `interval`, `once`
@@ -596,11 +637,13 @@ builder.Services.AddBikiranEngine(options => {
 - Timezone support (IANA IDs)
 
 **Admin API (22 endpoints across 3 controllers)**
+
 - `FlowRunsController` — list, get, progress, filter by status, soft-delete
 - `FlowDefinitionsController` — CRUD, versioning, toggle, trigger, runs list
 - `FlowSchedulesController` — CRUD, toggle, run-now, runs list
 
 **DI Extensions**
+
 - `AddBikiranEngine(options, dbOptionsAction?)` — full service registration
 - `MapBikiranEngineEndpoints()` — maps admin controllers
 - `EngineStartupService` — wires FlowBuilder + runs migration on startup
@@ -609,29 +652,29 @@ builder.Services.AddBikiranEngine(options => {
 
 ## Known Limitations
 
-| Limitation | Reason / Workaround |
-|---|---|
-| No `IfElseNode` in JSON definitions | Requires C# delegate for condition — use code-defined flows |
-| No `WhileLoopNode` in JSON definitions | Same reason |
-| No `DatabaseQueryNode` in JSON definitions | EF Core query delegates cannot be serialized |
-| No `ParallelNode` in JSON definitions | Complex branch structure — planned for v1.1 |
-| No built-in API authentication | Must be added by the host application |
-| In-memory DB is default for testing | Production deployments must configure a real EF Core provider |
-| `FlowContext` data dictionary is not thread-safe | `ParallelNode` branches must use unique keys |
+| Limitation                                       | Reason / Workaround                                           |
+| ------------------------------------------------ | ------------------------------------------------------------- |
+| No `IfElseNode` in JSON definitions              | Requires C# delegate for condition — use code-defined flows   |
+| No `WhileLoopNode` in JSON definitions           | Same reason                                                   |
+| No `DatabaseQueryNode` in JSON definitions       | EF Core query delegates cannot be serialized                  |
+| No `ParallelNode` in JSON definitions            | Complex branch structure — planned for v1.1                   |
+| No built-in API authentication                   | Must be added by the host application                         |
+| In-memory DB is default for testing              | Production deployments must configure a real EF Core provider |
+| `FlowContext` data dictionary is not thread-safe | `ParallelNode` branches must use unique keys                  |
 
 ---
 
 ## Future Roadmap
 
-| Version | Planned Feature |
-|---|---|
-| **v1.1** | `ParallelNode` support in JSON definitions |
+| Version  | Planned Feature                                                    |
+| -------- | ------------------------------------------------------------------ |
+| **v1.1** | `ParallelNode` support in JSON definitions                         |
 | **v1.1** | Built-in API key / Bearer token authentication for admin endpoints |
-| **v1.2** | Web UI dashboard for flow monitoring |
-| **v1.2** | Flow run cancellation endpoint |
-| **v1.3** | Event-driven triggers (webhook, message queue) |
-| **v2.0** | Distributed execution across multiple app instances |
+| **v1.2** | Web UI dashboard for flow monitoring                               |
+| **v1.2** | Flow run cancellation endpoint                                     |
+| **v1.3** | Event-driven triggers (webhook, message queue)                     |
+| **v2.0** | Distributed execution across multiple app instances                |
 
 ---
 
-*Generated as part of the Bikiran.Engine v1.0.0 NuGet package release preparation.*
+_Generated as part of the Bikiran.Engine v1.0.0 NuGet package release preparation._

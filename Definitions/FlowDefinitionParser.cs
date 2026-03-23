@@ -1,5 +1,6 @@
 using Bikiran.Engine.Core;
 using Bikiran.Engine.Nodes;
+using System.Collections.Concurrent;
 using System.Text.Json;
 
 namespace Bikiran.Engine.Definitions;
@@ -11,7 +12,7 @@ namespace Bikiran.Engine.Definitions;
 public class FlowDefinitionParser
 {
     // Registry of custom node types added via BikiranEngineOptions.RegisterNode<T>()
-    private static readonly Dictionary<string, Type> _customNodeTypes = new();
+    private static readonly ConcurrentDictionary<string, Type> _customNodeTypes = new();
 
     /// <summary>Registers a custom node type for use in JSON flow definitions.</summary>
     public static void RegisterNode<T>(string typeName) where T : IFlowNode

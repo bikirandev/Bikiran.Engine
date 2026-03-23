@@ -56,9 +56,10 @@ Use `.Configure()` to control how the flow behaves at runtime:
 
 | Strategy     | Behavior                                                                |
 | ------------ | ----------------------------------------------------------------------- |
-| **Stop**     | Cancel the entire flow immediately when a step fails                    |
-| **Continue** | Skip the failed step and move on to the next one                        |
-| **Retry**    | Let the step handle retries on its own (using its `MaxRetries` setting) |
+| **Stop**     | Cancel the entire flow immediately when a step fails                                   |
+| **Continue** | Skip the failed step and move on to the next one                                       |
+
+For retry behavior, wrap individual nodes with `RetryNode` instead of using a global failure strategy.
 
 ---
 
@@ -142,9 +143,8 @@ Background Execution
   │     ├── Update FlowRun progress counter
   │     │
   │     └── If the node fails:
-  │           ├── Stop    → abort the entire flow
-  │           ├── Continue → skip and move to next node
-  │           └── Retry   → the node handles retries internally
+  │           ├── Stop     → abort the entire flow
+  │           └── Continue → skip and move to next node
   │
   ├── All nodes done → FlowRun status = "completed"
   └── On unhandled error → FlowRun status = "failed"

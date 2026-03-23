@@ -2,6 +2,7 @@ namespace Bikiran.Engine.Core;
 
 /// <summary>
 /// Defines what happens when a node fails during flow execution.
+/// For retry behavior, wrap individual nodes with <see cref="Bikiran.Engine.Nodes.RetryNode"/>.
 /// </summary>
 public enum OnFailureAction
 {
@@ -9,8 +10,5 @@ public enum OnFailureAction
     Stop,
 
     /// <summary>Skip the failed node and continue with the next one.</summary>
-    Continue,
-
-    /// <summary>Let the node handle retries using its own MaxRetries setting.</summary>
-    Retry
+    Continue
 }

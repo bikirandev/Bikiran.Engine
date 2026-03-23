@@ -35,7 +35,7 @@ public class ParallelNode : IFlowNode
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
 
         var branchTasks = Branches.Select((branch, i) =>
-            RunBranchAsync(branch, i + 1, context, cts, cancellationToken)).ToList();
+            RunBranchAsync(branch, i + 1, context, cts)).ToList();
 
         NodeResult[] results;
         try
@@ -59,14 +59,13 @@ public class ParallelNode : IFlowNode
         List<IFlowNode> branch,
         int branchIndex,
         FlowContext context,
-        CancellationTokenSource cts,
-        CancellationToken cancellationToken)
+        CancellationTokenSource cts)
     {
         foreach (var node in branch)
         {
-            cancellationToken.ThrowIfCancellationRequested();
+            cts.Token.ThrowIfCancellationRequested();
 
-            var result = await node.ExecuteAsync(context, cancellationToken);
+            var result = await node.ExecuteAsync(context, cts.Token);
             if (!result.Success)
             {
                 if (AbortOnBranchFailure)

@@ -1,5 +1,6 @@
 using Bikiran.Engine.Core;
 using Bikiran.Engine.Database.Migration;
+using Bikiran.Engine.Scheduling;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -7,21 +8,25 @@ using Microsoft.Extensions.Logging;
 namespace Bikiran.Engine.Extensions;
 
 /// <summary>
-/// Hosted service that wires up FlowBuilder on startup and runs the schema migrator.
+/// Hosted service that wires up FlowBuilder on startup, runs the schema migrator,
+/// and initializes scheduled flows.
 /// </summary>
 internal class EngineStartupService : IHostedService
 {
     private readonly IServiceProvider _services;
     private readonly BikiranEngineOptions _options;
+    private readonly FlowSchedulerService _scheduler;
     private readonly ILogger<EngineStartupService>? _logger;
 
     public EngineStartupService(
         IServiceProvider services,
         BikiranEngineOptions options,
+        FlowSchedulerService scheduler,
         ILogger<EngineStartupService>? logger = null)
     {
         _services = services;
         _options = options;
+        _scheduler = scheduler;
         _logger = logger;
     }
 
@@ -42,6 +47,16 @@ internal class EngineStartupService : IHostedService
         catch (Exception ex)
         {
             _logger?.LogError(ex, "Bikiran.Engine: Startup migration failed.");
+        }
+
+        // Load and register all active schedules with Quartz
+        try
+        {
+            await _scheduler.InitializeAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Bikiran.Engine: Scheduler initialization failed.");
         }
     }
 

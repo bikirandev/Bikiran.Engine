@@ -2,6 +2,7 @@ using Bikiran.Engine.Credentials;
 using Bikiran.Engine.Database;
 using Bikiran.Engine.Database.Entities;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using System.Text.Json;
 
 namespace Bikiran.Engine.Core;
@@ -53,8 +54,24 @@ public class FlowBuilder
     /// </summary>
     public async Task<string> StartAsync()
     {
-        var (context, runner) = await PrepareAsync();
-        _ = runner.RunAsync(context, _nodes, CancellationToken.None);
+        var (context, scope, runner) = await PrepareAsync();
+
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await runner.RunAsync(context, _nodes, CancellationToken.None);
+            }
+            catch (Exception ex)
+            {
+                context.Logger?.LogError(ex, "Unhandled exception in background flow '{FlowName}'", _flowName);
+            }
+            finally
+            {
+                scope?.Dispose();
+            }
+        });
+
         return context.ServiceId;
     }
 
@@ -63,14 +80,21 @@ public class FlowBuilder
     /// </summary>
     public async Task<string> StartAndWaitAsync()
     {
-        var (context, runner) = await PrepareAsync();
-        await runner.RunAsync(context, _nodes, CancellationToken.None);
+        var (context, scope, runner) = await PrepareAsync();
+        try
+        {
+            await runner.RunAsync(context, _nodes, CancellationToken.None);
+        }
+        finally
+        {
+            scope?.Dispose();
+        }
         return context.ServiceId;
     }
 
     // --- Private helpers ---
 
-    private async Task<(FlowContext context, FlowRunner runner)> PrepareAsync()
+    private async Task<(FlowContext context, IServiceScope? scope, FlowRunner runner)> PrepareAsync()
     {
         if (_nodes.Count == 0)
             throw new InvalidOperationException("A flow must have at least one node.");
@@ -111,7 +135,7 @@ public class FlowBuilder
             await engineDb.SaveChangesAsync();
         }
 
-        var runner = new FlowRunner(ServiceProvider);
-        return (context, runner);
+        var runner = new FlowRunner(engineDb);
+        return (context, scope, runner);
     }
 }

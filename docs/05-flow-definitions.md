@@ -233,6 +233,7 @@ public class FlowDefinitionTriggerResponseDTO
 | No `WhileLoopNode` in JSON     | Requires a C# delegate                                 |
 | No `DatabaseQueryNode` in JSON | EF Core query delegates cannot be serialized           |
 | No `ParallelNode` in JSON      | Complex branch structure; planned for a future release |
+| No `RetryNode` in JSON         | Use `HttpRequestNode.MaxRetries` or code-defined flows |
 | No expression evaluation       | Prevents code injection from admin-supplied JSON       |
 
 For flows that need these capabilities, use code-defined flows via `FlowBuilder`.
