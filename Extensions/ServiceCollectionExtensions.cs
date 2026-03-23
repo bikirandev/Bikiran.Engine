@@ -5,6 +5,7 @@ using Bikiran.Engine.Definitions;
 using Bikiran.Engine.Scheduling;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Quartz;
 
 namespace Bikiran.Engine.Extensions;
 
@@ -44,10 +45,12 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<FlowDefinitionParser>();
         services.AddScoped<SchemaMigrator>();
 
-        // Register scheduler (Quartz must already be registered by the host app)
-        services.AddSingleton<FlowSchedulerService>();
+        // Register Quartz.NET scheduler
+        services.AddQuartz();
+        services.AddQuartzHostedService(q => q.WaitForJobsToComplete = true);
 
-        // Register the Quartz job
+        // Register scheduler service and the Quartz job
+        services.AddSingleton<FlowSchedulerService>();
         services.AddScoped<ScheduledFlowJob>();
 
         // Wire FlowBuilder with the service provider and credentials on startup

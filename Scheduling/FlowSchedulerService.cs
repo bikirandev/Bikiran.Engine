@@ -1,6 +1,7 @@
 using Bikiran.Engine.Database;
 using Bikiran.Engine.Database.Entities;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Quartz;
 
@@ -13,23 +14,26 @@ namespace Bikiran.Engine.Scheduling;
 public class FlowSchedulerService
 {
     private readonly ISchedulerFactory _schedulerFactory;
-    private readonly EngineDbContext _db;
+    private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<FlowSchedulerService>? _logger;
 
     public FlowSchedulerService(
         ISchedulerFactory schedulerFactory,
-        EngineDbContext db,
+        IServiceScopeFactory scopeFactory,
         ILogger<FlowSchedulerService>? logger = null)
     {
         _schedulerFactory = schedulerFactory;
-        _db = db;
+        _scopeFactory = scopeFactory;
         _logger = logger;
     }
 
     /// <summary>Loads all active schedules from the database and registers them with Quartz.NET.</summary>
     public async Task InitializeAsync()
     {
-        var schedules = await _db.FlowSchedule
+        using var scope = _scopeFactory.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<EngineDbContext>();
+
+        var schedules = await db.FlowSchedule
             .Where(s => s.IsActive && s.TimeDeleted == 0)
             .ToListAsync();
 
