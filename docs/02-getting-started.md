@@ -144,7 +144,7 @@ var apiKey = cred.Values["ApiKey"];
 
 When your application starts with `AddBikiranEngine()` configured:
 
-1. **Database tables are created** — `FlowRun`, `FlowNodeLog`, `FlowDefinition`, `FlowDefinitionRun`, `FlowSchedule`, and `EngineSchemaVersion` tables are set up automatically.
+1. **Database tables are created** — `FlowRun`, `FlowNodeLog`, `FlowDefinition`, `FlowDefinitionRun`, `FlowSchedule`, and `FlowSchemaVersion` tables are set up automatically.
 2. **Auto-migration runs** — if you update the NuGet package, the engine detects version differences and applies incremental schema changes.
 3. **Quartz.NET starts** — the scheduler loads all active schedules and begins monitoring trigger times.
 4. **Admin API is mapped** — all management endpoints become available under `/api/bikiran-engine/*`.

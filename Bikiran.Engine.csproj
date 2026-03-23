@@ -1,0 +1,46 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+
+    <!-- NuGet package metadata -->
+    <PackageId>Bikiran.Engine</PackageId>
+    <Version>1.0.0</Version>
+    <Authors>Bikiran Dev</Authors>
+    <Company>Bikiran</Company>
+    <Description>Workflow automation engine for .NET applications. Build, execute, schedule and monitor multi-step workflows using a fluent API — embedded directly inside your app.</Description>
+    <PackageTags>workflow;automation;background-jobs;flow;engine;scheduler;dotnet</PackageTags>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <RepositoryUrl>https://github.com/bikirandev/Bikiran.Engine</RepositoryUrl>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- EF Core for database persistence -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="8.0.0" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="8.0.0" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="8.0.0" />
+
+    <!-- DI and logging abstractions -->
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="8.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="8.0.0" />
+
+    <!-- ASP.NET Core for admin API controllers and routing -->
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+
+    <!-- Quartz.NET for scheduling -->
+    <PackageReference Include="Quartz.Extensions.Hosting" Version="3.10.0" />
+
+    <!-- MailKit for SMTP email sending -->
+    <PackageReference Include="MailKit" Version="4.3.0" />
+  </ItemGroup>
+
+</Project>

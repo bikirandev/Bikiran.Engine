@@ -15,7 +15,7 @@ All tables are created automatically on first startup and updated automatically 
 | `FlowDefinition`      | Stores reusable flow templates as JSON          |
 | `FlowDefinitionRun`   | Links a run to the definition that triggered it |
 | `FlowSchedule`        | Defines automated triggers for flow definitions |
-| `EngineSchemaVersion` | Tracks the current database schema version      |
+| `FlowSchemaVersion`   | Tracks the current database schema version      |
 
 ---
 
@@ -242,7 +242,7 @@ CREATE TABLE FlowSchedule (
 
 ---
 
-## EngineSchemaVersion
+## FlowSchemaVersion
 
 A single-row table that tracks the current database schema version. Used by the auto-migration system to detect and apply changes when the NuGet package is updated.
 
@@ -254,7 +254,7 @@ A single-row table that tracks the current database schema version. Used by the 
 | `PackageVersion` | VARCHAR(20) | —       | NuGet package version that applied the migration |
 
 ```sql
-CREATE TABLE EngineSchemaVersion (
+CREATE TABLE FlowSchemaVersion (
     Id             INT          PRIMARY KEY DEFAULT 1,
     SchemaVersion  VARCHAR(20)  NOT NULL,
     AppliedAt      BIGINT       NOT NULL,
@@ -271,11 +271,11 @@ The engine manages its own database schema without requiring manual migrations.
 
 **How it works:**
 
-1. On startup, the engine checks for the `EngineSchemaVersion` table.
+1. On startup, the engine checks for the `FlowSchemaVersion` table.
 2. If it does not exist, all tables are created from scratch.
 3. If it exists, the stored version is compared with the package's expected version.
 4. If there is a mismatch, incremental migration scripts are applied.
-5. The `EngineSchemaVersion` record is updated.
+5. The `FlowSchemaVersion` record is updated.
 
 **What this means for you:**
 
@@ -297,4 +297,4 @@ Each table has a corresponding C# entity class in the package:
 | `FlowDefinition`      | `Database/Entities/FlowDefinition.cs`      |
 | `FlowDefinitionRun`   | `Database/Entities/FlowDefinitionRun.cs`   |
 | `FlowSchedule`        | `Database/Entities/FlowSchedule.cs`        |
-| `EngineSchemaVersion` | `Database/Entities/EngineSchemaVersion.cs` |
+| `FlowSchemaVersion`   | `Database/Entities/FlowSchemaVersion.cs`   |

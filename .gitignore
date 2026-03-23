@@ -1,0 +1,15 @@
+# .NET build artifacts
+bin/
+obj/
+*.user
+*.suo
+.vs/
+
+# NuGet packages (generated at build time)
+*.nupkg
+*.snupkg
+nupkg/
+
+# Rider / JetBrains
+.idea/
+/Bikiran.Engine/bin
