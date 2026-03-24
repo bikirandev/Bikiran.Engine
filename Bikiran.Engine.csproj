@@ -7,7 +7,7 @@
 
     <!-- NuGet package metadata -->
     <PackageId>Bikiran.Engine</PackageId>
-    <Version>1.0.1</Version>
+    <Version>1.0.2</Version>
     <Authors>Bikiran Dev</Authors>
     <Company>Bikiran</Company>
     <Description>Workflow automation engine for .NET applications. Build, execute, schedule and monitor multi-step workflows using a fluent API — embedded directly inside your app.</Description>
