@@ -1,6 +1,6 @@
 # Flow Definitions — Enhancement Plan
 
-> **Package:** Bikiran.Engine v1.3.0  
+> **Package:** Bikiran.Engine v1.3.2  
 > **Date:** 2026-03-24  
 > **Status:** Planning  
 > **Scope:** Extend the Flow Definitions subsystem with flow lifecycle events, new JSON node support, validation, auth, import/export, versioning, parameter schemas, error handling, and testing.
@@ -51,17 +51,17 @@ The current Flow Definitions feature allows saving reusable JSON flow templates 
 
 ## 2. Phase 0 — Flow Lifecycle Events (OnSuccess / OnFail / OnFinish)
 
-> **Status:** ✅ Completed (v1.2.0)
+> **Status:** ✅ Completed (v1.3.2)
 
 ### 2.1 Overview
 
 Add three lifecycle event hooks to `FlowBuilder` that let callers attach nodes to run **after** the main node sequence finishes:
 
-| Event          | Fires When                                        | Use Case                          |
-| -------------- | ------------------------------------------------- | --------------------------------- |
-| **OnSuccess**  | All main nodes completed without failure           | Success logging, cleanup          |
-| **OnFail**     | The flow ended with a failure (error or timeout)   | Alert notifications, rollback     |
-| **OnFinish**   | Always, after success/fail handlers have run        | Final cleanup, audit logging      |
+| Event         | Fires When                                       | Use Case                      |
+| ------------- | ------------------------------------------------ | ----------------------------- |
+| **OnSuccess** | All main nodes completed without failure         | Success logging, cleanup      |
+| **OnFail**    | The flow ended with a failure (error or timeout) | Alert notifications, rollback |
+| **OnFinish**  | Always, after success/fail handlers have run     | Final cleanup, audit logging  |
 
 **Execution order:** Main nodes → OnSuccess _or_ OnFail → OnFinish
 
@@ -110,13 +110,13 @@ After the main node loop completes:
 
 ### 2.5 Files Changed
 
-| File                          | Change                                                        |
-| ----------------------------- | ------------------------------------------------------------- |
-| `Core/FlowBuilder.cs`        | Add `_onSuccessNodes`, `_onFailNodes`, `_onFinishNodes` lists, fluent methods, pass to runner |
-| `Core/FlowRunner.cs`         | Execute lifecycle nodes after main loop                       |
-| `Core/FlowContext.cs`        | Add `FlowStatus` and `FlowError` properties                  |
-| `docs/03-building-flows.md`  | Document lifecycle events                                     |
-| `docs/10-examples.md`        | Add lifecycle event example                                   |
+| File                        | Change                                                                                        |
+| --------------------------- | --------------------------------------------------------------------------------------------- |
+| `Core/FlowBuilder.cs`       | Add `_onSuccessNodes`, `_onFailNodes`, `_onFinishNodes` lists, fluent methods, pass to runner |
+| `Core/FlowRunner.cs`        | Execute lifecycle nodes after main loop                                                       |
+| `Core/FlowContext.cs`       | Add `FlowStatus` and `FlowError` properties                                                   |
+| `docs/03-building-flows.md` | Document lifecycle events                                                                     |
+| `docs/10-examples.md`       | Add lifecycle event example                                                                   |
 
 ---
 
@@ -663,27 +663,27 @@ When a node fails during definition-triggered execution, enrich the error log wi
 
 ## 11. File Impact Matrix
 
-| File                                               | Phase(s)      | Change Type                 |
-| -------------------------------------------------- | ------------- | --------------------------- |
-| `Core/FlowBuilder.cs`                              | 0             | Add lifecycle event methods |
-| `Core/FlowRunner.cs`                               | 0, 7          | Lifecycle execution, logging|
-| `Core/FlowContext.cs`                               | 0             | Add FlowStatus, FlowError  |
-| `Definitions/FlowDefinitionParser.cs`              | 1             | Major refactor              |
-| `Definitions/FlowDefinitionRunner.cs`              | 5, 6, 7       | Modify                      |
-| `Api/FlowDefinitionsController.cs`                 | 2, 3, 4, 5, 7 | Modify (many new endpoints) |
-| `Database/Entities/FlowDefinition.cs`              | 6             | Add column                  |
-| `Database/Migration/SchemaMigrator.cs`             | 6             | Add migration               |
-| `Definitions/DTOs/FlowDefinitionSaveRequestDTO.cs` | 6             | Add field                   |
-| `Extensions/BikiranEngineOptions.cs`               | 3             | Add properties              |
-| `Extensions/EndpointExtensions.cs`                 | 3             | Add auth logic              |
-| `Nodes/HttpRequestNode.cs`                         | 1             | Extract evaluator           |
-| `docs/03-building-flows.md`                        | 0             | Document lifecycle events   |
-| `docs/05-flow-definitions.md`                      | 1             | Update docs                 |
-| `docs/10-examples.md`                              | 0             | Add lifecycle example       |
-| **NEW** `Core/ExpressionEvaluator.cs`              | 1             | Create                      |
-| **NEW** `Definitions/FlowJsonValidator.cs`         | 2             | Create                      |
-| **NEW** `Api/ErrorCodes.cs`                        | 7             | Create                      |
-| **NEW** `Bikiran.Engine.Tests/`                    | 8             | Create project              |
+| File                                               | Phase(s)      | Change Type                  |
+| -------------------------------------------------- | ------------- | ---------------------------- |
+| `Core/FlowBuilder.cs`                              | 0             | Add lifecycle event methods  |
+| `Core/FlowRunner.cs`                               | 0, 7          | Lifecycle execution, logging |
+| `Core/FlowContext.cs`                              | 0             | Add FlowStatus, FlowError    |
+| `Definitions/FlowDefinitionParser.cs`              | 1             | Major refactor               |
+| `Definitions/FlowDefinitionRunner.cs`              | 5, 6, 7       | Modify                       |
+| `Api/FlowDefinitionsController.cs`                 | 2, 3, 4, 5, 7 | Modify (many new endpoints)  |
+| `Database/Entities/FlowDefinition.cs`              | 6             | Add column                   |
+| `Database/Migration/SchemaMigrator.cs`             | 6             | Add migration                |
+| `Definitions/DTOs/FlowDefinitionSaveRequestDTO.cs` | 6             | Add field                    |
+| `Extensions/BikiranEngineOptions.cs`               | 3             | Add properties               |
+| `Extensions/EndpointExtensions.cs`                 | 3             | Add auth logic               |
+| `Nodes/HttpRequestNode.cs`                         | 1             | Extract evaluator            |
+| `docs/03-building-flows.md`                        | 0             | Document lifecycle events    |
+| `docs/05-flow-definitions.md`                      | 1             | Update docs                  |
+| `docs/10-examples.md`                              | 0             | Add lifecycle example        |
+| **NEW** `Core/ExpressionEvaluator.cs`              | 1             | Create                       |
+| **NEW** `Definitions/FlowJsonValidator.cs`         | 2             | Create                       |
+| **NEW** `Api/ErrorCodes.cs`                        | 7             | Create                       |
+| **NEW** `Bikiran.Engine.Tests/`                    | 8             | Create project               |
 
 ---
 
