@@ -2,6 +2,7 @@ using Bikiran.Engine.Credentials;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using System.Text.Json.Serialization;
 
 namespace Bikiran.Engine.Core;
 
@@ -22,18 +23,22 @@ public class FlowContext
     // --- Injected services ---
 
     /// <summary>The host application's DbContext, available to DatabaseQueryNode and custom nodes.</summary>
+    [JsonIgnore]
     public object? DbContext { get; set; }
 
     /// <summary>The HTTP context of the originating request, used for capturing caller metadata.</summary>
+    [JsonIgnore]
     public HttpContext? HttpContext { get; set; }
 
     /// <summary>Structured logger available to nodes.</summary>
+    [JsonIgnore]
     public ILogger? Logger { get; set; }
 
     /// <summary>
     /// General-purpose DI service provider scoped to the flow's lifetime.
     /// Automatically set by FlowBuilder — prefer this over request-scoped services.
     /// </summary>
+    [JsonIgnore]
     public IServiceProvider? Services { get; set; }
 
     /// <summary>
@@ -47,7 +52,9 @@ public class FlowContext
     }
 
     // --- Internal state used by FlowRunner ---
+    [JsonIgnore]
     internal Dictionary<string, IEngineCredential> Credentials { get; set; } = new();
+    [JsonIgnore]
     internal FlowConfig Config { get; set; } = new();
 
     // --- Flow outcome (set by FlowRunner after main nodes complete) ---

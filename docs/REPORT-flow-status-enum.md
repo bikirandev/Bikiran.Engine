@@ -1,6 +1,6 @@
 # FlowStatus Enum Refactoring — Scope Report
 
-> **Package:** Bikiran.Engine v1.3.3 → v1.3.3  
+> **Package:** Bikiran.Engine v1.3.4 → v1.3.4  
 > **Date:** 2026-03-24  
 > **Objective:** Replace all magic status strings with strongly-typed enums  
 > **Status:** ✅ Completed
@@ -69,4 +69,4 @@ The database columns remain `varchar(20)` for backward compatibility. The enum i
 - [x] `FlowBuilder.PrepareAsync()` uses `FlowRunStatus.Pending`
 - [x] `ScheduledFlowJob` uses `FlowScheduleRunStatus` enum
 - [x] Docs updated to reference enum values
-- [x] Version bumped to 1.3.3
+- [x] Version bumped to 1.3.4
