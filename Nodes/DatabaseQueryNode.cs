@@ -30,9 +30,12 @@ public class DatabaseQueryNode<TContext> : IFlowNode where TContext : DbContext
     {
         var outputKey = OutputKey ?? $"{Name}_result";
 
-        if (context.DbContext is not TContext db)
+        // Try the explicitly-set DbContext first, then fall back to DI resolution.
+        var db = context.DbContext as TContext ?? context.GetDbContext<TContext>();
+        if (db == null)
             return NodeResult.Fail(
-                $"DatabaseQueryNode '{Name}': FlowContext.DbContext must be an instance of {typeof(TContext).Name}.");
+                $"DatabaseQueryNode '{Name}': {typeof(TContext).Name} is not available. " +
+                $"Either set FlowContext.DbContext or register {typeof(TContext).Name} in the DI container.");
 
         try
         {

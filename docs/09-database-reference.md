@@ -32,8 +32,8 @@ Stores one record per workflow execution.
 | `TriggerSource`  | VARCHAR(100) | `""`        | Where the flow was triggered from                            |
 | `Config`         | TEXT         | `"{}"`      | JSON-serialized runtime configuration                        |
 | `ContextMeta`    | TEXT         | `"{}"`      | JSON snapshot of caller context (IP, user ID, path)          |
-| `TotalNodes`     | INT          | `0`         | Total number of nodes in the flow                            |
-| `CompletedNodes` | INT          | `0`         | Number of nodes completed so far                             |
+| `TotalNodes`     | INT          | `0`         | Total number of main nodes in the flow (excludes lifecycle event nodes) |
+| `CompletedNodes` | INT          | `0`         | Number of main nodes completed so far (excludes lifecycle event nodes)  |
 | `ErrorMessage`   | VARCHAR(500) | NULL        | Error details if the flow failed                             |
 | `StartedAt`      | BIGINT       | `0`         | Unix timestamp when execution began                          |
 | `CompletedAt`    | BIGINT       | `0`         | Unix timestamp when execution finished                       |

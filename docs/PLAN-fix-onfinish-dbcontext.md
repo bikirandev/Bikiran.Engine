@@ -1,5 +1,7 @@
 # Plan: Fix OnFinish Disposed DbContext & Flow Status Issues
 
+> **Status: COMPLETED** — All steps implemented. See commit history for details.
+
 ## Problem Summary
 
 Two issues observed when the `DomainAddFinishLogNode` (an `OnFinish` lifecycle node) runs:

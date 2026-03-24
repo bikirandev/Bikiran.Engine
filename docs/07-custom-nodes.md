@@ -79,7 +79,6 @@ Custom nodes are used exactly like built-in nodes:
 var serviceId = await FlowBuilder
     .Create("invoice_flow")
     .WithContext(ctx => {
-        ctx.Services = _serviceProvider;
         ctx.HttpContext = HttpContext;
     })
     .AddNode(new HttpRequestNode("fetch_order") {
@@ -159,14 +158,18 @@ var baseUrl = cred.Values["BaseUrl"];
 
 ### Via Database
 
+For background flows (`StartAsync()`), resolve the `DbContext` from the flow-scoped DI container to avoid disposed-context errors:
+
 ```csharp
-var db = context.DbContext;
-if (db == null) return NodeResult.Fail("DbContext is required");
+var db = context.GetDbContext<AppDbContext>();
+if (db == null) return NodeResult.Fail("AppDbContext not registered in DI");
 
 var record = await db.Orders
     .Where(o => o.Id == orderId && o.TimeDeleted == 0)
     .FirstOrDefaultAsync(ct);
 ```
+
+> **Note:** Do not pass `ctx.DbContext = _context` in `.WithContext()` for background flows — that request-scoped instance will be disposed after the HTTP response is sent. See [Resolving DbContext in Nodes](03-building-flows.md#resolving-dbcontext-in-nodes).
 
 ---
 

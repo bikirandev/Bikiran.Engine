@@ -127,7 +127,15 @@ internal class FlowRunner
         context.FlowStatus = status;
         context.FlowError = flowError;
 
-        // Execute lifecycle event nodes
+        // Persist final flow status BEFORE running lifecycle event nodes,
+        // so OnSuccess/OnFail/OnFinish nodes see the committed status.
+        // Lifecycle nodes must not affect completedNodes, durationMs, completedAt, or errorMessage.
+        await UpdateRunStatusAsync(context.ServiceId, status,
+            completedAt: runCompletedAtMs / 1000,
+            durationMs: runCompletedAtMs - runStartedAtMs,
+            errorMessage: flowError);
+
+        // Execute lifecycle event nodes (after status is committed)
         var lifecycleSequenceStart = nodes.Count + 1;
 
         if (flowError == null && onSuccessNodes.Count > 0)
@@ -146,11 +154,6 @@ internal class FlowRunner
             await ExecuteLifecycleNodesAsync(
                 context, onFinishNodes, "OnFinish", lifecycleSequenceStart, ct);
         }
-
-        await UpdateRunStatusAsync(context.ServiceId, status,
-            completedAt: runCompletedAtMs / 1000,
-            durationMs: runCompletedAtMs - runStartedAtMs,
-            errorMessage: flowError);
     }
 
     // --- Lifecycle event helpers ---

@@ -17,7 +17,6 @@ var serviceId = await FlowBuilder
         cfg.TriggerSource = nameof(OrdersV3Controller);
     })
     .WithContext(ctx => {
-        ctx.DbContext = _context;
         ctx.HttpContext = HttpContext;
     })
     .AddNode(new HttpRequestNode("fetch_order") {
@@ -45,7 +44,6 @@ Load a record from the database and do different things based on whether it exis
 ```csharp
 var serviceId = await FlowBuilder
     .Create("user_lookup_flow")
-    .WithContext(ctx => { ctx.DbContext = _context; })
     .AddNode(new DatabaseQueryNode<AppDbContext>("find_user") {
         Query = async (db, ct) => await db.UserProfile
             .FirstOrDefaultAsync(u => u.Email == email && u.TimeDeleted == 0, ct),
@@ -78,7 +76,6 @@ Load a subscription, build a message from it, and send an email:
 ```csharp
 var serviceId = await FlowBuilder
     .Create("subscription_reminder")
-    .WithContext(ctx => { ctx.DbContext = _context; })
     .AddNode(new DatabaseQueryNode<AppDbContext>("fetch_subscription") {
         Query = async (db, ct) => await db.Subscription
             .Where(s => s.Id == subscriptionId && s.TimeDeleted == 0)
@@ -270,7 +267,6 @@ public async Task<ActionResult> TestFlow()
             c.TriggerSource = "TestController";
         })
         .WithContext(ctx => {
-            ctx.DbContext = _context;
             ctx.HttpContext = HttpContext;
         })
         .AddNode(new WaitNode("initial_wait") { DelayMs = 500 })
@@ -347,9 +343,12 @@ var serviceId = await FlowBuilder
 **Execution order:**
 
 1. Main nodes run in sequence (add_dns_record → wait_for_dns → verify_dns)
-2. If all succeeded → `OnSuccess` handlers run
-3. If any failed → `OnFail` handlers run instead
-4. `OnFinish` handlers always run last
+2. Flow status, `completedAt`, `durationMs`, and `errorMessage` are committed to the database
+3. If all succeeded → `OnSuccess` handlers run
+4. If any failed → `OnFail` handlers run instead
+5. `OnFinish` handlers always run last
+
+> **Note:** Lifecycle event nodes (`OnSuccess`, `OnFail`, `OnFinish`) are **not** counted in `TotalNodes` or `CompletedNodes` and do not affect `durationMs`, `completedAt`, or `errorMessage`.
 
 ### Checking Success or Failure in OnFinish
 

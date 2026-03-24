@@ -244,7 +244,7 @@ Runs an EF Core query against your application's database and stores the result 
 | `FailIfNull`       | bool                                                 | `false`                 | Return failure if the query returns null |
 | `NullErrorMessage` | string                                               | `"Query returned null"` | Error message when failing on null       |
 
-**Requirement:** `FlowContext.DbContext` must be set to an instance of your `TContext`.
+**Requirement:** Your `TContext` DbContext must be available to the node. The node first checks `FlowContext.DbContext`, and if that is not set or not the right type, it falls back to resolving `TContext` from the flow-scoped DI container via `FlowContext.GetDbContext<TContext>()`. For background flows (`StartAsync()`), the DI fallback is recommended — see [Resolving DbContext in Nodes](03-building-flows.md#resolving-dbcontext-in-nodes).
 
 **Important:** Always use EF Core LINQ or parameterized queries. Never use raw SQL string interpolation inside the delegate.
 

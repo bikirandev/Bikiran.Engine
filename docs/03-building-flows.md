@@ -72,14 +72,14 @@ Use `.WithContext()` to provide services that nodes can access during execution:
 
 ```csharp
 .WithContext(ctx => {
-    ctx.DbContext = _context;          // Your app's DbContext (for DatabaseQueryNode)
     ctx.HttpContext = HttpContext;      // For capturing caller metadata
     ctx.Logger = _logger;              // For structured logging
-    ctx.Services = _serviceProvider;   // General-purpose DI access
 })
 ```
 
 When `HttpContext` is provided, the engine automatically captures caller metadata (IP address, user ID, request path, user agent) and saves it with the run record for later debugging.
+
+> **Important — DI Scope:** The engine creates its own long-lived DI scope for each flow run. This scope outlives the HTTP request, so nodes in background flows (`StartAsync()`) can safely resolve services from it. Use `context.GetDbContext<T>()` or `context.Services` inside nodes instead of passing a request-scoped `DbContext` via `.WithContext()`. See [Resolving DbContext in Nodes](#resolving-dbcontext-in-nodes) below.
 
 ---
 
@@ -112,11 +112,34 @@ The `FlowContext` also provides access to:
 
 - `ServiceId` — the unique run identifier
 - `FlowName` — the name of the current flow
-- `DbContext` — the host application's database context
 - `HttpContext` — the original HTTP request context
-- `Services` — the DI service provider
+- `Services` — the flow-scoped DI service provider (set automatically by `FlowBuilder`)
 - `Logger` — a structured logger
+- `GetDbContext<T>()` — resolves a `DbContext` from the flow-scoped DI container (recommended for background flows)
 - `GetCredential<T>(name)` — retrieves a named credential registered at startup
+- `DbContext` — *(legacy)* a manually injected database context; prefer `GetDbContext<T>()` for background flows
+
+---
+
+## Resolving DbContext in Nodes
+
+When a flow runs in the background via `StartAsync()`, the HTTP request that created the flow finishes immediately — and any request-scoped `DbContext` is disposed. To avoid "Cannot access a disposed context" errors, use `GetDbContext<T>()` inside your nodes:
+
+```csharp
+public async Task<NodeResult> ExecuteAsync(FlowContext context, CancellationToken ct)
+{
+    var db = context.GetDbContext<AppDbContext>();
+    if (db == null)
+        return NodeResult.Fail("AppDbContext not registered in DI");
+
+    var record = await db.Orders.FirstOrDefaultAsync(o => o.Id == orderId, ct);
+    // ...
+}
+```
+
+This resolves `AppDbContext` from the engine's long-lived DI scope (created in `FlowBuilder.PrepareAsync()`), which remains alive for the entire flow execution.
+
+> **Do not** pass `ctx.DbContext = _context` in `.WithContext()` for background flows — that instance will be disposed when the HTTP request ends.
 
 ---
 
@@ -129,6 +152,10 @@ Use lifecycle event methods to run nodes after the main flow completes. This is 
 | `.OnSuccess()` | All main nodes completed without failure          | Success logging, cleanup          |
 | `.OnFail()`    | The flow ended with a failure (error or timeout)  | Alert notifications, rollback     |
 | `.OnFinish()`  | Always, after success/fail handlers have run       | Final cleanup, audit logging      |
+
+> **Timing:** The flow's final status (`completed` / `failed`), `completedAt`, `durationMs`, and `errorMessage` are all committed to the database **before** any lifecycle event node runs. This means `OnSuccess`, `OnFail`, and `OnFinish` nodes can safely read the persisted status.
+>
+> **Isolation:** Lifecycle event nodes are **not** counted in `TotalNodes` or `CompletedNodes`. They do not affect `durationMs`, `completedAt`, or `errorMessage`. Failures in lifecycle nodes are logged but never change the flow's final status.
 
 ```csharp
 var serviceId = await FlowBuilder
@@ -153,7 +180,7 @@ var serviceId = await FlowBuilder
     .StartAsync();
 ```
 
-**Execution order:** Main nodes → OnSuccess _or_ OnFail → OnFinish
+**Execution order:** Main nodes → Flow status committed to DB → OnSuccess _or_ OnFail → OnFinish
 
 You can chain multiple handlers for each event — they run in the order they were added:
 
@@ -261,6 +288,9 @@ Background Execution
   │
   ├── Set FlowContext.FlowStatus and FlowContext.FlowError
   │
+  ├── Commit FlowRun status to database
+  │     (status, completedAt, durationMs, errorMessage)
+  │
   ├── If all nodes succeeded and OnSuccess handlers exist:
   │     └── Run OnSuccess nodes sequentially (failures logged only)
   ├── If the flow failed and OnFail handlers exist:
@@ -268,8 +298,7 @@ Background Execution
   ├── If OnFinish handlers exist:
   │     └── Run OnFinish nodes sequentially (failures logged only)
   │
-  ├── All nodes done → FlowRun status = "completed"
-  └── On unhandled error → FlowRun status = "failed"
+  └── Done (status already committed above)
 ```
 
 ### Timeout Protection
