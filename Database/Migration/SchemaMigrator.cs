@@ -14,10 +14,10 @@ namespace Bikiran.Engine.Database.Migration;
 public class SchemaMigrator
 {
     /// <summary>Current schema version embedded in this package version.</summary>
-    public const string CurrentSchemaVersion = "1.1.0";
+    public const string CurrentSchemaVersion = "1.3.4";
 
     /// <summary>NuGet package version.</summary>
-    public const string PackageVersion = "1.1.0";
+    public const string PackageVersion = "1.3.4";
 
     private readonly EngineDbContext _db;
     private readonly ILogger<SchemaMigrator>? _logger;

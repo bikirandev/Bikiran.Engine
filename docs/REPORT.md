@@ -1,9 +1,9 @@
 # Bikiran.Engine — NuGet Package Development Report
 
 **Package:** `Bikiran.Engine`  
-**Version:** `1.0.1`  
+**Version:** `1.3.4`  
 **Target Framework:** .NET 8.0  
-**Date:** 2026-03-19  
+**Date:** 2026-03-24  
 **Author:** Bikiran Dev
 
 ---
@@ -86,8 +86,12 @@ Bikiran.Engine/
 │   ├── FlowContext.cs             # Shared state, credentials, DI
 │   ├── FlowConfig.cs              # MaxExecutionTime, OnFailure, logging
 │   ├── OnFailureAction.cs         # Stop / Continue enum
+│   ├── FlowRunStatus.cs           # Pending / Running / Completed / Failed / Cancelled enum
+│   ├── FlowNodeStatus.cs          # Pending / Running / Completed / Failed / Skipped enum
+│   ├── FlowScheduleRunStatus.cs   # Triggered / Error enum
+│   ├── ExpressionEvaluator.cs     # Boolean expression evaluator for context values
 │   ├── ContextMeta.cs             # HTTP request snapshot for audit
-│   ├── FlowBuilder.cs             # Fluent builder + StartAsync
+│   ├── FlowBuilder.cs             # Fluent builder + StartAsync + lifecycle events
 │   └── FlowRunner.cs              # Sequential execution engine
 │
 ├── Nodes/
@@ -121,6 +125,7 @@ Bikiran.Engine/
 ├── Definitions/
 │   ├── FlowDefinitionParser.cs
 │   ├── FlowDefinitionRunner.cs
+│   ├── FlowJsonValidator.cs
 │   └── DTOs/
 │       ├── FlowDefinitionSaveRequestDTO.cs
 │       ├── FlowDefinitionTriggerRequestDTO.cs
@@ -134,6 +139,7 @@ Bikiran.Engine/
 │       └── FlowScheduleSummaryDTO.cs
 │
 ├── Api/
+│   ├── ErrorCodes.cs
 │   ├── FlowRunsController.cs
 │   ├── FlowDefinitionsController.cs
 │   └── FlowSchedulesController.cs
@@ -198,6 +204,9 @@ Fluent builder with:
 - `.Configure(action)` — set runtime options
 - `.WithContext(action)` — inject services
 - `.AddNode(node)` — add steps
+- `.OnSuccess(node)` — add a handler for when all main nodes succeed
+- `.OnFail(node)` — add a handler for when the flow fails
+- `.OnFinish(node)` — add a handler that always runs after success/fail handlers
 - `.StartAsync()` — start in background, return ServiceId immediately
 - `.StartAndWaitAsync()` — start and block until completion
 
@@ -205,11 +214,13 @@ Fluent builder with:
 
 Internal executor that:
 
-1. Updates `FlowRun.Status` → `"running"`
+1. Updates `FlowRun.Status` → `FlowRunStatus.Running`
 2. Runs each node in sequence with timeout protection
-3. Creates/updates `FlowNodeLog` records for each step
+3. Creates/updates `FlowNodeLog` records for each step (using `FlowNodeStatus` enum)
 4. Handles `OnFailure` strategy (Stop / Continue)
-5. Updates final `FlowRun` status to `"completed"` or `"failed"`
+5. Sets `FlowContext.FlowStatus` and `FlowContext.FlowError`
+6. Commits final `FlowRun` status to database
+7. Runs lifecycle event nodes: OnSuccess / OnFail → OnFinish
 
 ---
 
@@ -367,17 +378,25 @@ All endpoints are under `/api/bikiran-engine/` and are activated by `app.MapBiki
 
 #### Flow Definitions — `/api/bikiran-engine/definitions`
 
-| Method   | Route                         | Description                                   |
-| -------- | ----------------------------- | --------------------------------------------- |
-| `GET`    | `/definitions`                | List all definitions (latest version per key) |
-| `GET`    | `/definitions/{key}`          | Get latest version                            |
-| `GET`    | `/definitions/{key}/versions` | All versions                                  |
-| `POST`   | `/definitions`                | Create a new definition                       |
-| `PUT`    | `/definitions/{key}`          | Update (auto-increments version)              |
-| `PATCH`  | `/definitions/{key}/toggle`   | Enable/disable                                |
-| `DELETE` | `/definitions/{key}`          | Soft-delete all versions                      |
-| `POST`   | `/definitions/{key}/trigger`  | Trigger with parameters                       |
-| `GET`    | `/definitions/{key}/runs`     | Runs from this definition                     |
+| Method   | Route                                        | Description                                   |
+| -------- | -------------------------------------------- | --------------------------------------------- |
+| `GET`    | `/definitions`                               | List all definitions (latest version per key) |
+| `GET`    | `/definitions/{key}`                         | Get latest version                            |
+| `GET`    | `/definitions/{key}/versions`                | All versions                                  |
+| `POST`   | `/definitions`                               | Create a new definition                       |
+| `PUT`    | `/definitions/{key}`                         | Update (auto-increments version)              |
+| `PATCH`  | `/definitions/{key}/toggle`                  | Enable/disable                                |
+| `DELETE` | `/definitions/{key}`                         | Soft-delete all versions                      |
+| `POST`   | `/definitions/{key}/trigger`                 | Trigger with parameters                       |
+| `POST`   | `/definitions/{key}/dry-run`                 | Dry-run: validate without executing           |
+| `GET`    | `/definitions/{key}/runs`                    | Runs from this definition                     |
+| `POST`   | `/definitions/validate`                      | Validate FlowJson without saving              |
+| `PATCH`  | `/definitions/{key}/versions/{ver}/activate` | Activate a specific version                   |
+| `GET`    | `/definitions/{key}/versions/diff?v1=&v2=`   | Compare two versions                          |
+| `GET`    | `/definitions/{key}/export`                  | Export a definition                           |
+| `GET`    | `/definitions/export-all`                    | Export all definitions                        |
+| `POST`   | `/definitions/import`                        | Import a definition                           |
+| `POST`   | `/definitions/extract-parameters`            | Extract `{{placeholder}}` names               |
 
 #### Flow Schedules — `/api/bikiran-engine/schedules`
 
@@ -574,6 +593,50 @@ builder.Services.AddBikiranEngine(options => {
 
 ## Update Log / Version History
 
+### v1.3.4 — 2026-03-24
+
+**New Features**
+
+- Strongly-typed status enums: `FlowRunStatus`, `FlowNodeStatus`, `FlowScheduleRunStatus` — all code now uses enums instead of magic strings (DB columns remain `varchar` for backward compatibility)
+- `FlowContext.FlowStatus` changed from `string?` to `FlowRunStatus?`
+
+### v1.3.2 — 2026-03-24
+
+**Chore**
+
+- Version bump and project file updates
+
+### v1.2.0 — 2026-03-24
+
+**New Features**
+
+- Lifecycle events: `.OnSuccess()`, `.OnFail()`, `.OnFinish()` on `FlowBuilder` for post-flow handling
+- Lifecycle event nodes run after main flow status is committed to DB; they do not affect `TotalNodes`, `CompletedNodes`, `DurationMs`, or the flow's final status
+
+### v1.1.0 — 2026-03-24
+
+**New Features**
+
+- `FlowJsonValidator` — validates flow definition JSON structure, node types, and configurations before saving
+- `ExpressionEvaluator` — evaluates boolean expressions against FlowContext values
+- `ErrorCodes` — standardized error codes for consistent API error responses
+- `ParameterSchema` column added to `FlowDefinition` table for runtime parameter validation
+- New API endpoints: `POST /definitions/{key}/dry-run`, `POST /definitions/validate`, `PATCH /definitions/{key}/versions/{ver}/activate`, `GET /definitions/{key}/versions/diff`, `GET /definitions/{key}/export`, `GET /definitions/export-all`, `POST /definitions/import`, `POST /definitions/extract-parameters`
+- `SchemaMigrator` now uses `ExecuteSilentAsync` for cleaner DDL execution
+- Replaced `EnsureCreatedAsync` with custom table creation logic in `SchemaMigrator` for MySQL
+
+**Improvements**
+
+- `FlowRunner` uses asynchronous database calls throughout
+- Duration tracking uses milliseconds for accuracy (`DurationMs` field)
+
+### v1.0.2 — 2026-03-24
+
+**Improvements**
+
+- Admin API documentation enhanced with detailed setup, conventions, and endpoint summaries
+- Enhancement plan for Flow Definitions subsystem with JSON node support and validation
+
 ### v1.0.1 — 2026-03-23
 
 **Bug Fixes**
@@ -636,10 +699,10 @@ builder.Services.AddBikiranEngine(options => {
 - Misfire handling for all three types
 - Timezone support (IANA IDs)
 
-**Admin API (22 endpoints across 3 controllers)**
+**Admin API (30+ endpoints across 3 controllers)**
 
 - `FlowRunsController` — list, get, progress, filter by status, soft-delete
-- `FlowDefinitionsController` — CRUD, versioning, toggle, trigger, runs list
+- `FlowDefinitionsController` — CRUD, versioning, toggle, trigger, dry-run, validate, import/export, parameter extraction, runs list
 - `FlowSchedulesController` — CRUD, toggle, run-now, runs list
 
 **DI Extensions**
@@ -657,8 +720,7 @@ builder.Services.AddBikiranEngine(options => {
 | No `IfElseNode` in JSON definitions              | Requires C# delegate for condition — use code-defined flows   |
 | No `WhileLoopNode` in JSON definitions           | Same reason                                                   |
 | No `DatabaseQueryNode` in JSON definitions       | EF Core query delegates cannot be serialized                  |
-| No `ParallelNode` in JSON definitions            | Complex branch structure — planned for v1.1                   |
-| No built-in API authentication                   | Must be added by the host application                         |
+| No `ParallelNode` in JSON definitions            | Complex branch structure — planned for future version         |
 | In-memory DB is default for testing              | Production deployments must configure a real EF Core provider |
 | `FlowContext` data dictionary is not thread-safe | `ParallelNode` branches must use unique keys                  |
 
@@ -668,13 +730,12 @@ builder.Services.AddBikiranEngine(options => {
 
 | Version  | Planned Feature                                                    |
 | -------- | ------------------------------------------------------------------ |
-| **v1.1** | `ParallelNode` support in JSON definitions                         |
-| **v1.1** | Built-in API key / Bearer token authentication for admin endpoints |
-| **v1.2** | Web UI dashboard for flow monitoring                               |
-| **v1.2** | Flow run cancellation endpoint                                     |
-| **v1.3** | Event-driven triggers (webhook, message queue)                     |
+| **v1.4** | `ParallelNode` support in JSON definitions                         |
+| **v1.5** | Web UI dashboard for flow monitoring                               |
+| **v1.5** | Flow run cancellation endpoint                                     |
+| **v2.0** | Event-driven triggers (webhook, message queue)                     |
 | **v2.0** | Distributed execution across multiple app instances                |
 
 ---
 
-_Generated as part of the Bikiran.Engine v1.0.0 NuGet package release preparation._
+_Generated as part of the Bikiran.Engine NuGet package release. Last updated for v1.3.4._

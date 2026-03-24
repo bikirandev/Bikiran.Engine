@@ -136,17 +136,50 @@ app.MapBikiranEngineEndpoints();
 
 All routes are under `/api/bikiran-engine/`:
 
+**Flow Runs** — `/runs`
+
 | Method | Route | Description |
 |---|---|---|
-| `GET` | `/runs` | List all runs |
+| `GET` | `/runs` | List all runs (paginated) |
 | `GET` | `/runs/{serviceId}` | Get run details with node logs |
 | `GET` | `/runs/{serviceId}/progress` | Get progress percentage |
-| `GET` | `/definitions` | List flow definitions |
+| `GET` | `/runs/status/{status}` | Filter runs by status |
+| `DELETE` | `/runs/{serviceId}` | Soft-delete a run |
+
+**Flow Definitions** — `/definitions`
+
+| Method | Route | Description |
+|---|---|---|
+| `GET` | `/definitions` | List definitions (latest versions) |
+| `GET` | `/definitions/{key}` | Get latest version |
+| `GET` | `/definitions/{key}/versions` | List all versions |
 | `POST` | `/definitions` | Create a definition |
-| `POST` | `/definitions/{key}/trigger` | Trigger a definition |
-| `GET` | `/schedules` | List schedules |
+| `PUT` | `/definitions/{key}` | Update (auto-increments version) |
+| `PATCH` | `/definitions/{key}/toggle` | Enable or disable |
+| `DELETE` | `/definitions/{key}` | Soft-delete |
+| `POST` | `/definitions/{key}/trigger` | Trigger with parameters |
+| `POST` | `/definitions/{key}/dry-run` | Validate without executing |
+| `GET` | `/definitions/{key}/runs` | List runs from this definition |
+| `POST` | `/definitions/validate` | Validate FlowJson |
+| `PATCH` | `/definitions/{key}/versions/{ver}/activate` | Activate a specific version |
+| `GET` | `/definitions/{key}/versions/diff?v1=&v2=` | Compare two versions |
+| `GET` | `/definitions/{key}/export` | Export a definition |
+| `GET` | `/definitions/export-all` | Export all definitions |
+| `POST` | `/definitions/import` | Import a definition |
+| `POST` | `/definitions/extract-parameters` | Extract `{{placeholder}}` names |
+
+**Flow Schedules** — `/schedules`
+
+| Method | Route | Description |
+|---|---|---|
+| `GET` | `/schedules` | List all schedules |
+| `GET` | `/schedules/{key}` | Get details with next fire time |
 | `POST` | `/schedules` | Create a schedule |
+| `PUT` | `/schedules/{key}` | Update and re-register in Quartz |
+| `PATCH` | `/schedules/{key}/toggle` | Enable or disable |
+| `DELETE` | `/schedules/{key}` | Soft-delete and unregister |
 | `POST` | `/schedules/{key}/run-now` | Trigger immediately |
+| `GET` | `/schedules/{key}/runs` | List runs from this schedule |
 
 ---
 
