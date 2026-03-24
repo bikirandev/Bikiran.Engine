@@ -1,5 +1,8 @@
+using System.Data;
+using System.Data.Common;
 using Bikiran.Engine.Database.Entities;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.Logging;
 
 namespace Bikiran.Engine.Database.Migration;
@@ -107,7 +110,7 @@ public class SchemaMigrator
 
     private async Task CreateMySqlTablesAsync()
     {
-        await _db.Database.ExecuteSqlRawAsync("""
+        await ExecuteSilentAsync("""
             CREATE TABLE IF NOT EXISTS `FlowSchemaVersion` (
                 `Id` int NOT NULL,
                 `SchemaVersion` varchar(20) NOT NULL,
@@ -117,7 +120,7 @@ public class SchemaMigrator
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
             """);
 
-        await _db.Database.ExecuteSqlRawAsync("""
+        await ExecuteSilentAsync("""
             CREATE TABLE IF NOT EXISTS `FlowRun` (
                 `Id` bigint NOT NULL AUTO_INCREMENT,
                 `ServiceId` varchar(36) NOT NULL,
@@ -142,7 +145,7 @@ public class SchemaMigrator
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
             """);
 
-        await _db.Database.ExecuteSqlRawAsync("""
+        await ExecuteSilentAsync("""
             CREATE TABLE IF NOT EXISTS `FlowNodeLog` (
                 `Id` bigint NOT NULL AUTO_INCREMENT,
                 `ServiceId` varchar(36) NOT NULL,
@@ -164,7 +167,7 @@ public class SchemaMigrator
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
             """);
 
-        await _db.Database.ExecuteSqlRawAsync("""
+        await ExecuteSilentAsync("""
             CREATE TABLE IF NOT EXISTS `FlowDefinition` (
                 `Id` bigint NOT NULL AUTO_INCREMENT,
                 `DefinitionKey` varchar(100) NOT NULL,
@@ -184,7 +187,7 @@ public class SchemaMigrator
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
             """);
 
-        await _db.Database.ExecuteSqlRawAsync("""
+        await ExecuteSilentAsync("""
             CREATE TABLE IF NOT EXISTS `FlowDefinitionRun` (
                 `Id` bigint NOT NULL AUTO_INCREMENT,
                 `FlowRunServiceId` varchar(36) NOT NULL,
@@ -199,7 +202,7 @@ public class SchemaMigrator
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
             """);
 
-        await _db.Database.ExecuteSqlRawAsync("""
+        await ExecuteSilentAsync("""
             CREATE TABLE IF NOT EXISTS `FlowSchedule` (
                 `Id` bigint NOT NULL AUTO_INCREMENT,
                 `ScheduleKey` varchar(100) NOT NULL,
@@ -230,6 +233,29 @@ public class SchemaMigrator
     }
 
     /// <summary>
+    /// Executes a DDL statement using the raw ADO.NET connection,
+    /// bypassing EF Core's command logging to keep startup output clean.
+    /// </summary>
+    private async Task ExecuteSilentAsync(string sql)
+    {
+        var conn = _db.Database.GetDbConnection();
+        var wasClosed = conn.State == ConnectionState.Closed;
+        if (wasClosed) await conn.OpenAsync();
+        try
+        {
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = sql;
+            // Enlist in the current EF Core transaction if one exists
+            cmd.Transaction = _db.Database.CurrentTransaction?.GetDbTransaction();
+            await cmd.ExecuteNonQueryAsync();
+        }
+        finally
+        {
+            if (wasClosed) await conn.CloseAsync();
+        }
+    }
+
+    /// <summary>
     /// Applies incremental migration scripts based on the currently stored schema version.
     /// Add new migration blocks here as the package evolves.
     /// </summary>
@@ -245,7 +271,7 @@ public class SchemaMigrator
             if (isMySql)
             {
                 // Check if column already exists to avoid error on re-run
-                await _db.Database.ExecuteSqlRawAsync("""
+                await ExecuteSilentAsync("""
                     SET @col_exists = (
                         SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS
                         WHERE TABLE_NAME = 'FlowDefinition' AND COLUMN_NAME = 'ParameterSchema'
