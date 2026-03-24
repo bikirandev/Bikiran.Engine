@@ -43,6 +43,7 @@ public static class ServiceCollectionExtensions
         // Register core services
         services.AddScoped<FlowDefinitionRunner>();
         services.AddSingleton<FlowDefinitionParser>();
+        services.AddSingleton<FlowJsonValidator>();
         services.AddScoped<SchemaMigrator>();
 
         // Register Quartz.NET scheduler

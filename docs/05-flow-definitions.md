@@ -76,14 +76,111 @@ The `FlowJson` field stores a structured JSON object with the flow name, configu
 
 ### Supported Node Types
 
-| JSON Type     | Maps To                            |
-| ------------- | ---------------------------------- |
-| `Wait`        | WaitNode                           |
-| `HttpRequest` | HttpRequestNode                    |
-| `EmailSend`   | EmailSendNode                      |
-| `Transform`   | TransformNode (static values only) |
+| JSON Type     | Maps To         | Description                                              |
+| ------------- | --------------- | -------------------------------------------------------- |
+| `Wait`        | WaitNode        | Pause execution for a given delay                        |
+| `HttpRequest` | HttpRequestNode | Make HTTP calls with retry, headers, and validation      |
+| `EmailSend`   | EmailSendNode   | Send email via SMTP using registered credentials         |
+| `Transform`   | TransformNode   | Set a static value in the flow context                   |
+| `IfElse`      | IfElseNode      | Conditional branching using expression evaluation        |
+| `Parallel`    | ParallelNode    | Run multiple branches concurrently                       |
+| `Retry`       | RetryNode       | Wrap any node with configurable retry logic              |
+| `WhileLoop`   | WhileLoopNode   | Repeat steps while a condition remains true              |
 
-Nodes that require C# code (like `IfElseNode`, `WhileLoopNode`, `DatabaseQueryNode`, and `ParallelNode`) cannot be expressed in JSON. Use code-defined flows via `FlowBuilder` for those.
+> `DatabaseQueryNode` cannot be expressed in JSON because it requires a typed EF Core delegate. Use code-defined flows for database queries.
+
+---
+
+## Conditional & Control-Flow Nodes
+
+### IfElse
+
+Evaluates a condition expression against the flow context and runs the appropriate branch:
+
+```json
+{
+  "type": "IfElse",
+  "name": "check_amount",
+  "params": {
+    "condition": "$ctx.order_total > 1000"
+  },
+  "trueBranch": [
+    { "type": "EmailSend", "name": "vip_email", "params": { "toEmail": "{{email}}", "subject": "VIP Order" } }
+  ],
+  "falseBranch": [
+    { "type": "EmailSend", "name": "standard_email", "params": { "toEmail": "{{email}}", "subject": "Order Received" } }
+  ]
+}
+```
+
+**Condition syntax:** Supports `$ctx.key` references, comparison operators (`==`, `!=`, `>`, `<`, `>=`, `<=`), and logical operators (`&&`, `||`).
+
+### WhileLoop
+
+Repeats a body of steps while a condition is true, up to a maximum iteration count:
+
+```json
+{
+  "type": "WhileLoop",
+  "name": "poll_status",
+  "params": {
+    "condition": "$ctx.status != done",
+    "maxIterations": 10,
+    "iterationDelayMs": 5000
+  },
+  "body": [
+    {
+      "type": "HttpRequest",
+      "name": "check_status",
+      "params": { "url": "https://api.example.com/status", "outputKey": "status" }
+    }
+  ]
+}
+```
+
+### Parallel
+
+Runs multiple branches concurrently. Each branch is an array of nodes:
+
+```json
+{
+  "type": "Parallel",
+  "name": "parallel_notifications",
+  "params": {
+    "waitAll": true,
+    "abortOnBranchFailure": false
+  },
+  "branches": [
+    [
+      { "type": "EmailSend", "name": "email_admin", "params": { "toEmail": "admin@example.com", "subject": "Alert" } }
+    ],
+    [
+      { "type": "HttpRequest", "name": "webhook", "params": { "url": "https://hooks.example.com/notify", "method": "POST" } }
+    ]
+  ]
+}
+```
+
+### Retry
+
+Wraps a single inner node with retry logic:
+
+```json
+{
+  "type": "Retry",
+  "name": "retry_api_call",
+  "params": {
+    "maxAttempts": 5,
+    "delayMs": 3000,
+    "backoffMultiplier": 2.0
+  },
+  "inner": {
+    "type": "HttpRequest",
+    "name": "fragile_api",
+    "params": { "url": "https://unstable-api.example.com/data", "outputKey": "api_result" }
+  }
+}
+```
 
 ---
 
@@ -96,15 +193,144 @@ String values in node parameters support `{{paramName}}` placeholders. When the 
 - Use double curly braces: `{{paramName}}`
 - Placeholders are replaced in all string values, including nested values in `headers` and `placeholders`
 - Unmatched parameters are ignored
-- Placeholders with no matching value remain as-is and generate a log warning
+- Placeholders with no matching value remain as-is
 
-**Example:** A definition with `"url": "https://api.example.com/order/{{orderId}}"` triggered with `{ "orderId": "12345" }` resolves to `"url": "https://api.example.com/order/12345"`.
+**Built-in parameters** (injected automatically, can be overridden):
+
+| Parameter     | Value                              |
+| ------------- | ---------------------------------- |
+| `today_date`  | `yyyy-MM-dd` UTC                   |
+| `unix_now`    | Current Unix timestamp (seconds)   |
+| `year`        | Current year (`yyyy`)              |
+| `month`       | Current month (`MM`)               |
+
+---
+
+## Parameter Schema
+
+Definitions can include a `ParameterSchema` that describes the expected parameters and their types. When a definition is triggered, parameters are validated against this schema.
+
+```json
+{
+  "orderId": { "type": "string", "required": true },
+  "amount": { "type": "number", "required": true },
+  "sendEmail": { "type": "boolean", "required": false, "default": "true" }
+}
+```
+
+**Supported types:** `string`, `number`, `boolean`
+
+When `required` is `true` and no `default` is provided, the parameter must be supplied at trigger time. If a `default` is set, it is used when the parameter is not provided.
+
+---
+
+## Validation
+
+FlowJson is automatically validated when creating or updating definitions. You can also validate without saving:
+
+```http
+POST /api/bikiran-engine/definitions/validate
+Content-Type: application/json
+
+{
+  "flowJson": "{ \"name\": \"test\", \"nodes\": [...] }"
+}
+```
+
+Validation checks:
+- Valid JSON structure
+- Required `name` property
+- Non-empty `nodes` array
+- Each node has a valid `type` and unique `name`
+- Type-specific parameter requirements (e.g., `url` for HttpRequest)
+- Recursive validation of nested nodes (IfElse branches, Parallel branches, etc.)
 
 ---
 
 ## Versioning
 
-Every time a definition is saved, its `Version` number increases automatically. Previous versions are kept for reference. When triggered, only the **latest active version** of a definition key is used.
+Every time a definition is saved, its `Version` number increases automatically. Previous versions are kept for reference.
+
+### Active Version
+
+When triggered, only the **latest active version** of a definition key is used. You can activate a specific version:
+
+```http
+PATCH /api/bikiran-engine/definitions/{key}/versions/{version}/activate
+```
+
+This deactivates all other versions and sets the specified one as active.
+
+### Version Comparison
+
+Compare two versions side-by-side:
+
+```http
+GET /api/bikiran-engine/definitions/{key}/versions/diff?v1=1&v2=3
+```
+
+### Optimistic Concurrency
+
+Send an `If-Match` header with the expected version number when updating:
+
+```http
+PUT /api/bikiran-engine/definitions/{key}
+If-Match: "3"
+```
+
+If another update occurred since you last read the definition, a `409 Conflict` is returned.
+
+---
+
+## Import / Export
+
+### Export a single definition
+
+```http
+GET /api/bikiran-engine/definitions/{key}/export
+```
+
+### Export all definitions
+
+```http
+GET /api/bikiran-engine/definitions/export-all
+```
+
+### Import a definition
+
+```http
+POST /api/bikiran-engine/definitions/import
+Content-Type: application/json
+
+{
+  "definitionKey": "order_notification_flow",
+  "displayName": "Order Notification",
+  "description": "Sends notification for new orders",
+  "flowJson": "{ ... }",
+  "tags": "orders,email",
+  "parameterSchema": "{ \"orderId\": { \"type\": \"string\", \"required\": true } }"
+}
+```
+
+Importing creates a new version if the key already exists.
+
+---
+
+## Dry-Run
+
+Test a definition without actually executing it:
+
+```http
+POST /api/bikiran-engine/definitions/{key}/dry-run
+Content-Type: application/json
+
+{
+  "parameters": { "orderId": "12345" },
+  "triggerSource": "test"
+}
+```
+
+This validates the definition, resolves parameters, and parses the flow without starting execution.
 
 ---
 
@@ -112,11 +338,23 @@ Every time a definition is saved, its `Version` number increases automatically. 
 
 ### SSRF Protection
 
-`HttpRequest` nodes in definitions support an `allowedHosts` parameter — a list of permitted domain names. When set, the resolved URL must match one of the allowed hosts. This prevents parameter values from redirecting HTTP calls to unintended servers.
+`HttpRequest` nodes support an `allowedHosts` parameter — a list of permitted domain names. When set, the resolved URL must match one of the allowed hosts.
 
-### No Code Injection
+### Authentication
 
-The system intentionally does not support expression evaluation or arbitrary code execution from JSON. Complex logic that requires conditionals or custom code must use code-defined flows.
+Enable authentication on engine endpoints:
+
+```csharp
+builder.Services.AddBikiranEngine(options =>
+{
+    options.RequireAuthentication = true;
+    options.AuthorizationPolicy = "EngineAdmin"; // optional named policy
+});
+```
+
+### Expression Evaluation
+
+Condition expressions in `IfElse` and `WhileLoop` nodes use a safe evaluator that only supports `$ctx.key` references and basic comparison/logical operators. No arbitrary code execution is possible.
 
 ---
 
@@ -161,7 +399,7 @@ var serviceId = await _definitionRunner.TriggerAsync(
 
 ## Registering Custom Nodes for JSON
 
-If you create custom node types and want them available in JSON definitions, register them at startup:
+Register custom node types at startup to use them in JSON definitions:
 
 ```csharp
 builder.Services.AddBikiranEngine(options =>
@@ -198,6 +436,7 @@ public class FlowDefinitionSaveRequestDTO
     public string Description { get; set; }
     public string FlowJson { get; set; }          // Full JSON string
     public string Tags { get; set; }              // Comma-separated
+    public string? ParameterSchema { get; set; }  // Optional JSON schema
 }
 ```
 
@@ -224,6 +463,14 @@ public class FlowDefinitionTriggerResponseDTO
 ```
 
 ---
+
+## Limitations
+
+| Limitation                     | Reason                                           |
+| ------------------------------ | ------------------------------------------------ |
+| No `DatabaseQueryNode` in JSON | EF Core query delegates cannot be serialized     |
+
+For flows that need typed database queries, use code-defined flows via `FlowBuilder`.
 
 ## Limitations
 

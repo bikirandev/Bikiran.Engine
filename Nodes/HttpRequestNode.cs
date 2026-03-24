@@ -92,7 +92,7 @@ public class HttpRequestNode : IFlowNode
 
                 if (!string.IsNullOrWhiteSpace(ExpectValue))
                 {
-                    var validationError = ValidateExpression(responseBody, ExpectValue);
+                    var validationError = ExpressionEvaluator.ValidateJsonExpression(responseBody, ExpectValue);
                     if (validationError != null)
                         return NodeResult.Fail(validationError);
                 }
@@ -110,101 +110,5 @@ public class HttpRequestNode : IFlowNode
         }
 
         return NodeResult.Fail($"HTTP request failed after {MaxRetries + 1} attempt(s): {lastException?.Message}");
-    }
-
-    /// <summary>
-    /// Evaluates a simple expression against the parsed JSON response.
-    /// Returns null on success or an error message on failure.
-    /// </summary>
-    private static string? ValidateExpression(string json, string expression)
-    {
-        try
-        {
-            using var doc = JsonDocument.Parse(json);
-            var root = doc.RootElement;
-
-            // Replace $val.field references with their actual values from the JSON
-            var resolved = Regex.Replace(expression, @"\$val\.(\w+(?:\.\w+)*)", match =>
-            {
-                var path = match.Groups[1].Value.Split('.');
-                var current = root;
-                foreach (var segment in path)
-                {
-                    if (current.ValueKind != JsonValueKind.Object ||
-                        !current.TryGetProperty(segment, out current))
-                        return "null";
-                }
-
-                return current.ValueKind switch
-                {
-                    JsonValueKind.String => $"\"{current.GetString()}\"",
-                    JsonValueKind.Number => current.GetRawText(),
-                    JsonValueKind.True => "true",
-                    JsonValueKind.False => "false",
-                    _ => "null"
-                };
-            });
-
-            if (!EvaluateCondition(resolved))
-                return $"ExpectValue assertion failed: {expression}";
-
-            return null;
-        }
-        catch (Exception ex)
-        {
-            return $"ExpectValue evaluation error: {ex.Message}";
-        }
-    }
-
-    /// <summary>Evaluates a simplified boolean expression string.</summary>
-    private static bool EvaluateCondition(string condition)
-    {
-        // Handle && and || by splitting at the operator
-        if (condition.Contains("&&"))
-        {
-            var parts = condition.Split("&&", 2);
-            return EvaluateCondition(parts[0].Trim()) && EvaluateCondition(parts[1].Trim());
-        }
-        if (condition.Contains("||"))
-        {
-            var parts = condition.Split("||", 2);
-            return EvaluateCondition(parts[0].Trim()) || EvaluateCondition(parts[1].Trim());
-        }
-
-        // Check each operator in order (longest first to avoid prefix conflicts)
-        foreach (var op in new[] { ">=", "<=", "!=", "==", ">", "<" })
-        {
-            var idx = condition.IndexOf(op, StringComparison.Ordinal);
-            if (idx < 0) continue;
-
-            var left = condition[..idx].Trim().Trim('"');
-            var right = condition[(idx + op.Length)..].Trim().Trim('"');
-
-            // Try numeric comparison first
-            if (double.TryParse(left, out var l) && double.TryParse(right, out var r))
-            {
-                return op switch
-                {
-                    ">=" => l >= r,
-                    "<=" => l <= r,
-                    ">" => l > r,
-                    "<" => l < r,
-                    "==" => Math.Abs(l - r) < 1e-10,
-                    "!=" => Math.Abs(l - r) > 1e-10,
-                    _ => false
-                };
-            }
-
-            // Fall back to string comparison
-            return op switch
-            {
-                "==" => left == right,
-                "!=" => left != right,
-                _ => false
-            };
-        }
-
-        // Treat the whole condition as a boolean literal
-        return condition.Trim().ToLowerInvariant() == "true";
     }
 }

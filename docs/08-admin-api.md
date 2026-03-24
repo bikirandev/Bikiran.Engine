@@ -62,24 +62,24 @@ Every response follows a consistent envelope:
 {
   "error": false,
   "message": "Human-readable summary",
-  "data": { }
+  "data": {}
 }
 ```
 
-| Field     | Type          | Description                                       |
-| --------- | ------------- | ------------------------------------------------- |
-| `error`   | `bool`        | `false` on success, `true` on failure             |
-| `message` | `string`      | Short description of the result                   |
-| `data`    | `object/array`| Response payload (omitted on some error responses)|
+| Field     | Type           | Description                                        |
+| --------- | -------------- | -------------------------------------------------- |
+| `error`   | `bool`         | `false` on success, `true` on failure              |
+| `message` | `string`       | Short description of the result                    |
+| `data`    | `object/array` | Response payload (omitted on some error responses) |
 
 ### Pagination
 
 Paginated endpoints accept these query parameters:
 
-| Parameter  | Type  | Default | Description                 |
-| ---------- | ----- | ------- | --------------------------- |
-| `page`     | `int` | `1`     | Page number (1-indexed)     |
-| `pageSize` | `int` | `20`    | Items per page              |
+| Parameter  | Type  | Default | Description             |
+| ---------- | ----- | ------- | ----------------------- |
+| `page`     | `int` | `1`     | Page number (1-indexed) |
+| `pageSize` | `int` | `20`    | Items per page          |
 
 ### Soft Deletes
 
@@ -99,13 +99,13 @@ Endpoints for viewing and managing individual flow executions.
 
 ### Endpoint Summary
 
-| Method   | Route                        | Description                                             |
-| -------- | ---------------------------- | ------------------------------------------------------- |
-| `GET`    | `/runs`                      | List all runs (paginated)                               |
-| `GET`    | `/runs/{serviceId}`          | Get full details of a run, including all node logs      |
-| `GET`    | `/runs/{serviceId}/progress` | Get the current progress percentage                     |
-| `GET`    | `/runs/status/{status}`      | Filter runs by status (paginated)                       |
-| `DELETE` | `/runs/{serviceId}`          | Soft-delete a run record                                |
+| Method   | Route                        | Description                                        |
+| -------- | ---------------------------- | -------------------------------------------------- |
+| `GET`    | `/runs`                      | List all runs (paginated)                          |
+| `GET`    | `/runs/{serviceId}`          | Get full details of a run, including all node logs |
+| `GET`    | `/runs/{serviceId}/progress` | Get the current progress percentage                |
+| `GET`    | `/runs/status/{status}`      | Filter runs by status (paginated)                  |
+| `DELETE` | `/runs/{serviceId}`          | Soft-delete a run record                           |
 
 ---
 
@@ -150,9 +150,9 @@ Get full details of a single run including all node execution logs.
 
 **Path Parameters:**
 
-| Parameter   | Type     | Description                    |
-| ----------- | -------- | ------------------------------ |
-| `serviceId` | `string` | UUID identifying the flow run  |
+| Parameter   | Type     | Description                   |
+| ----------- | -------- | ----------------------------- |
+| `serviceId` | `string` | UUID identifying the flow run |
 
 **Response** `200 OK`:
 
@@ -229,8 +229,8 @@ Filter runs by status, paginated and ordered by most recent first.
 
 **Path Parameters:**
 
-| Parameter | Type     | Valid values                                          |
-| --------- | -------- | ----------------------------------------------------- |
+| Parameter | Type     | Valid values                                             |
+| --------- | -------- | -------------------------------------------------------- |
 | `status`  | `string` | `pending`, `running`, `completed`, `failed`, `cancelled` |
 
 **Query Parameters:** `page`, `pageSize`
@@ -241,7 +241,9 @@ Filter runs by status, paginated and ordered by most recent first.
 {
   "error": false,
   "message": "Runs with status 'running'",
-  "data": [ /* FlowRun objects */ ]
+  "data": [
+    /* FlowRun objects */
+  ]
 }
 ```
 
@@ -269,23 +271,31 @@ Soft-delete a run record. Sets `TimeDeleted` to the current Unix timestamp.
 
 ## 2. Flow Definitions
 
-Endpoints for creating, updating, and triggering database-stored flow templates. Definitions are versioned — each update creates a new version while preserving the full history.
+Endpoints for creating, updating, validating, importing/exporting, versioning, and triggering database-stored flow templates. Definitions are versioned — each update creates a new version while preserving the full history.
 
 **Route prefix:** `/api/bikiran-engine/definitions`
 
 ### Endpoint Summary
 
-| Method   | Route                         | Description                                        |
-| -------- | ----------------------------- | -------------------------------------------------- |
-| `GET`    | `/definitions`                | List all definitions (paginated)                   |
-| `GET`    | `/definitions/{key}`          | Get the latest version of a definition             |
-| `GET`    | `/definitions/{key}/versions` | List all versions of a definition                  |
-| `POST`   | `/definitions`                | Create a new definition (v1)                       |
-| `PUT`    | `/definitions/{key}`          | Update a definition (auto-increments version)      |
-| `PATCH`  | `/definitions/{key}/toggle`   | Enable or disable a definition                     |
-| `DELETE` | `/definitions/{key}`          | Soft-delete all versions of a definition           |
-| `POST`   | `/definitions/{key}/trigger`  | Trigger a definition with runtime parameters       |
-| `GET`    | `/definitions/{key}/runs`     | List runs triggered from this definition           |
+| Method   | Route                                        | Description                                   |
+| -------- | -------------------------------------------- | --------------------------------------------- |
+| `GET`    | `/definitions`                               | List all definitions (paginated)              |
+| `GET`    | `/definitions/{key}`                         | Get the latest version of a definition        |
+| `GET`    | `/definitions/{key}/versions`                | List all versions of a definition             |
+| `POST`   | `/definitions`                               | Create a new definition (v1)                  |
+| `PUT`    | `/definitions/{key}`                         | Update a definition (auto-increments version) |
+| `PATCH`  | `/definitions/{key}/toggle`                  | Enable or disable a definition                |
+| `DELETE` | `/definitions/{key}`                         | Soft-delete all versions of a definition      |
+| `POST`   | `/definitions/{key}/trigger`                 | Trigger a definition with runtime parameters  |
+| `POST`   | `/definitions/{key}/dry-run`                 | Dry-run: validate without executing           |
+| `GET`    | `/definitions/{key}/runs`                    | List runs triggered from this definition      |
+| `POST`   | `/definitions/validate`                      | Validate FlowJson without saving              |
+| `PATCH`  | `/definitions/{key}/versions/{ver}/activate` | Activate a specific version                   |
+| `GET`    | `/definitions/{key}/versions/diff?v1=&v2=`   | Compare two versions side-by-side             |
+| `GET`    | `/definitions/{key}/export`                  | Export a definition                           |
+| `GET`    | `/definitions/export-all`                    | Export all definitions                        |
+| `POST`   | `/definitions/import`                        | Import a definition                           |
+| `POST`   | `/definitions/extract-parameters`            | Extract {{placeholder}} names from FlowJson   |
 
 ---
 
@@ -328,9 +338,9 @@ Get the latest version of a specific definition.
 
 **Path Parameters:**
 
-| Parameter | Type     | Description                                  |
-| --------- | -------- | -------------------------------------------- |
-| `key`     | `string` | Unique slug (e.g., `welcome_email_flow`)      |
+| Parameter | Type     | Description                              |
+| --------- | -------- | ---------------------------------------- |
+| `key`     | `string` | Unique slug (e.g., `welcome_email_flow`) |
 
 **Response** `200 OK`:
 
@@ -374,8 +384,20 @@ List all versions of a definition, ordered by most recent first.
 {
   "error": false,
   "data": [
-    { "id": 2, "definitionKey": "welcome_email_flow", "version": 2, "isActive": true, "...": "..." },
-    { "id": 1, "definitionKey": "welcome_email_flow", "version": 1, "isActive": true, "...": "..." }
+    {
+      "id": 2,
+      "definitionKey": "welcome_email_flow",
+      "version": 2,
+      "isActive": true,
+      "...": "..."
+    },
+    {
+      "id": 1,
+      "definitionKey": "welcome_email_flow",
+      "version": 1,
+      "isActive": true,
+      "...": "..."
+    }
   ]
 }
 ```
@@ -388,13 +410,14 @@ Create a new flow definition (starts at version 1).
 
 **Request Body** (`FlowDefinitionSaveRequestDTO`):
 
-| Field           | Type     | Required | Description                                     |
-| --------------- | -------- | -------- | ----------------------------------------------- |
-| `definitionKey` | `string` | Yes      | Unique slug (e.g., `order_notification`)        |
-| `displayName`   | `string` | No       | Human-readable label                            |
-| `description`   | `string` | No       | What this flow does                             |
-| `flowJson`      | `string` | No       | JSON string describing the flow (default: `{}`) |
-| `tags`          | `string` | No       | Comma-separated tags (e.g., `email,auth`)       |
+| Field             | Type     | Required | Description                                     |
+| ----------------- | -------- | -------- | ----------------------------------------------- |
+| `definitionKey`   | `string` | Yes      | Unique slug (e.g., `order_notification`)        |
+| `displayName`     | `string` | No       | Human-readable label                            |
+| `description`     | `string` | No       | What this flow does                             |
+| `flowJson`        | `string` | No       | JSON string describing the flow (default: `{}`) |
+| `tags`            | `string` | No       | Comma-separated tags (e.g., `email,auth`)       |
+| `parameterSchema` | `string` | No       | JSON schema for runtime parameters              |
 
 **Example Request:**
 
@@ -444,11 +467,18 @@ Update a definition. This creates a **new version** (auto-incremented) rather th
 
 **Request Body:** Same as POST (`FlowDefinitionSaveRequestDTO`), but `definitionKey` field is ignored — the path parameter is used.
 
+**Headers (optional):**
+
+| Header     | Description                                                     |
+| ---------- | --------------------------------------------------------------- |
+| `If-Match` | Expected current version (e.g., `"3"`). Returns 409 on mismatch |
+
 **Example Request:**
 
 ```http
 PUT /api/bikiran-engine/definitions/welcome_email_flow
 Content-Type: application/json
+If-Match: "1"
 
 {
   "displayName": "Welcome Email Flow (v2)",
@@ -458,15 +488,32 @@ Content-Type: application/json
 }
 ```
 
-**Response** `200 OK`:
+**Response** `200 OK` (includes ETag header):
 
 ```json
 {
   "error": false,
   "message": "Definition updated to v2",
-  "data": { "id": 2, "definitionKey": "welcome_email_flow", "version": 2, "...": "..." }
+  "data": {
+    "id": 2,
+    "definitionKey": "welcome_email_flow",
+    "version": 2,
+    "...": "..."
+  }
 }
 ```
+
+**Response** `409 Conflict` (version mismatch):
+
+```json
+{
+  "error": true,
+  "code": "VERSION_CONFLICT",
+  "message": "Version conflict: expected v1, current is v2"
+}
+```
+
+````
 
 ---
 
@@ -482,7 +529,7 @@ Toggle a definition between active and inactive. An inactive definition cannot b
 
 ```json
 { "error": false, "message": "Definition is now inactive" }
-```
+````
 
 **Response** `404 Not Found`:
 
@@ -520,19 +567,19 @@ Trigger execution of a definition with runtime parameters. The latest active ver
 
 **Request Body** (`FlowDefinitionTriggerRequestDTO`):
 
-| Field           | Type                       | Required | Description                                          |
-| --------------- | -------------------------- | -------- | ---------------------------------------------------- |
-| `parameters`    | `Dictionary<string,string>`| No       | Key-value pairs that replace `{{placeholders}}`      |
-| `triggerSource` | `string`                   | No       | Label identifying where this trigger originated      |
+| Field           | Type                        | Required | Description                                     |
+| --------------- | --------------------------- | -------- | ----------------------------------------------- |
+| `parameters`    | `Dictionary<string,string>` | No       | Key-value pairs that replace `{{placeholders}}` |
+| `triggerSource` | `string`                    | No       | Label identifying where this trigger originated |
 
 **System parameters** are injected automatically and can be used in FlowJson without passing them:
 
-| Placeholder       | Value                          |
-| ----------------- | ------------------------------ |
-| `{{today_date}}`  | Current date (`YYYY-MM-DD`)    |
-| `{{unix_now}}`    | Current Unix timestamp         |
-| `{{year}}`        | Current year (`YYYY`)          |
-| `{{month}}`       | Current month (`MM`)           |
+| Placeholder      | Value                       |
+| ---------------- | --------------------------- |
+| `{{today_date}}` | Current date (`YYYY-MM-DD`) |
+| `{{unix_now}}`   | Current Unix timestamp      |
+| `{{year}}`       | Current year (`YYYY`)       |
+| `{{month}}`      | Current month (`MM`)        |
 
 **Example Request:**
 
@@ -567,7 +614,10 @@ Content-Type: application/json
 **Response** `400 Bad Request` (definition not found, inactive, or invalid):
 
 ```json
-{ "error": true, "message": "Flow definition 'unknown_flow' not found or is inactive." }
+{
+  "error": true,
+  "message": "Flow definition 'unknown_flow' not found or is inactive."
+}
 ```
 
 > **Note:** The trigger returns immediately after queuing the flow. Use the `serviceId` with the [Flow Runs](#1-flow-runs) endpoints to track progress.
@@ -604,6 +654,215 @@ List all runs that were triggered from this definition, paginated.
 
 ---
 
+### POST `/definitions/{key}/dry-run`
+
+Dry-run: validates the definition, resolves parameters, and parses the flow — without executing.
+
+**Path Parameters:** `key` (string)
+
+**Request Body:** Same as trigger (`FlowDefinitionTriggerRequestDTO`).
+
+**Response** `200 OK`:
+
+```json
+{
+  "error": false,
+  "code": "VALIDATION_RESULT",
+  "message": "Dry-run succeeded",
+  "data": { "dryRunId": "dry-run:welcome_email_flow:v2" }
+}
+```
+
+---
+
+### POST `/definitions/validate`
+
+Validate FlowJson structure without saving. Useful for editor/IDE integrations.
+
+**Request Body:**
+
+```json
+{ "flowJson": "{\"name\": \"test\", \"nodes\": [...]}" }
+```
+
+**Response** `200 OK`:
+
+```json
+{ "error": false, "code": "VALIDATION_RESULT", "message": "FlowJson is valid" }
+```
+
+**Response** `400 Bad Request`:
+
+```json
+{
+  "error": true,
+  "code": "INVALID_FLOW_JSON",
+  "message": "Validation failed",
+  "data": [
+    "nodes[0]: missing or empty 'name' property.",
+    "nodes[1]: HttpRequest requires 'params' with at least 'url'."
+  ]
+}
+```
+
+---
+
+### PATCH `/definitions/{key}/versions/{version}/activate`
+
+Activate a specific version (deactivates all other versions of this key).
+
+**Path Parameters:** `key` (string), `version` (int)
+
+**Response** `200 OK`:
+
+```json
+{
+  "error": false,
+  "message": "Version 1 is now the active version for 'welcome_email_flow'"
+}
+```
+
+**Response** `404 Not Found`:
+
+```json
+{
+  "error": true,
+  "code": "VERSION_NOT_FOUND",
+  "message": "Version 5 not found for 'welcome_email_flow'"
+}
+```
+
+---
+
+### GET `/definitions/{key}/versions/diff`
+
+Compare two versions of a definition side-by-side.
+
+**Query Parameters:** `v1` (int), `v2` (int)
+
+**Response** `200 OK`:
+
+```json
+{
+  "error": false,
+  "data": {
+    "key": "welcome_email_flow",
+    "version1": {
+      "version": 1,
+      "flowJson": "{...}",
+      "parameterSchema": null,
+      "displayName": "v1 Name",
+      "isActive": false,
+      "timeCreated": 1742000000
+    },
+    "version2": {
+      "version": 2,
+      "flowJson": "{...}",
+      "parameterSchema": "{...}",
+      "displayName": "v2 Name",
+      "isActive": true,
+      "timeCreated": 1742000500
+    }
+  }
+}
+```
+
+---
+
+### GET `/definitions/{key}/export`
+
+Export a single definition as a portable JSON document.
+
+**Response** `200 OK`:
+
+```json
+{
+  "error": false,
+  "data": {
+    "_exportVersion": "1.0",
+    "definitionKey": "welcome_email_flow",
+    "displayName": "Welcome Email Flow",
+    "description": "...",
+    "flowJson": "{...}",
+    "tags": "email,auth",
+    "parameterSchema": null,
+    "version": 2,
+    "exportedAt": 1742001000
+  }
+}
+```
+
+---
+
+### GET `/definitions/export-all`
+
+Export all definitions (latest version of each key).
+
+**Response** `200 OK`:
+
+```json
+{
+  "error": false,
+  "data": {
+    "exportedAt": 1742001000,
+    "definitions": [
+      { "_exportVersion": "1.0", "definitionKey": "...", "...": "..." }
+    ]
+  }
+}
+```
+
+---
+
+### POST `/definitions/import`
+
+Import a definition. If the key already exists, creates a new version.
+
+**Request Body:** Same as POST create (`FlowDefinitionSaveRequestDTO`). FlowJson is validated before importing.
+
+**Response** `200 OK`:
+
+```json
+{
+  "error": false,
+  "message": "Definition imported as v3",
+  "data": { "...": "..." }
+}
+```
+
+**Response** `400 Bad Request`:
+
+```json
+{
+  "error": true,
+  "code": "IMPORT_FAILED",
+  "message": "Import validation failed",
+  "data": ["..."]
+}
+```
+
+---
+
+### POST `/definitions/extract-parameters`
+
+Extract all `{{placeholder}}` parameter names from the FlowJson string.
+
+**Request Body:**
+
+```json
+{
+  "flowJson": "{\"name\":\"test\",\"nodes\":[{\"type\":\"HttpRequest\",\"name\":\"call\",\"params\":{\"url\":\"https://api.example.com/{{orderId}}\"}}]}"
+}
+```
+
+**Response** `200 OK`:
+
+```json
+{ "error": false, "data": ["orderId"] }
+```
+
+---
+
 ### FlowJson Format
 
 The `flowJson` field contains a JSON string with this structure:
@@ -620,7 +879,7 @@ The `flowJson` field contains a JSON string with this structure:
     {
       "type": "NodeType",
       "name": "unique_node_name",
-      "params": { }
+      "params": {}
     }
   ]
 }
@@ -628,22 +887,26 @@ The `flowJson` field contains a JSON string with this structure:
 
 **Config options:**
 
-| Field                       | Type     | Default       | Description                          |
-| --------------------------- | -------- | ------------- | ------------------------------------ |
-| `maxExecutionTimeSeconds`   | `int`    | `600` (10min) | Timeout for the entire flow          |
-| `onFailure`                 | `string` | `"Stop"`      | `"Stop"` or `"Continue"` on failure  |
-| `enableNodeLogging`         | `bool`   | `true`        | Log per-node execution details       |
+| Field                     | Type     | Default       | Description                         |
+| ------------------------- | -------- | ------------- | ----------------------------------- |
+| `maxExecutionTimeSeconds` | `int`    | `600` (10min) | Timeout for the entire flow         |
+| `onFailure`               | `string` | `"Stop"`      | `"Stop"` or `"Continue"` on failure |
+| `enableNodeLogging`       | `bool`   | `true`        | Log per-node execution details      |
 
 **Supported node types:**
 
-| Type          | Description                                   | Key params                                    |
-| ------------- | --------------------------------------------- | --------------------------------------------- |
-| `Wait`        | Pause execution for a duration                | `delayMs`                                     |
-| `HttpRequest` | Make an outbound HTTP call                    | `url`, `method`, `body`, `headers`, `maxRetries`, `timeoutSeconds`, `outputKey`, `expectStatusCode`, `expectValue`, `allowedHosts` |
-| `EmailSend`   | Send an email via SMTP                        | `toEmail`, `toName`, `subject`, `credentialName`, `template`, `htmlBody`, `textBody`, `placeholders` |
-| `Transform`   | Set a static value in context                 | `outputKey`, `value`                          |
+| Type          | Description                    | Key params                                                                                                                         |
+| ------------- | ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `Wait`        | Pause execution for a duration | `delayMs`                                                                                                                          |
+| `HttpRequest` | Make an outbound HTTP call     | `url`, `method`, `body`, `headers`, `maxRetries`, `timeoutSeconds`, `outputKey`, `expectStatusCode`, `expectValue`, `allowedHosts` |
+| `EmailSend`   | Send an email via SMTP         | `toEmail`, `toName`, `subject`, `credentialName`, `template`, `htmlBody`, `textBody`, `placeholders`                               |
+| `Transform`   | Set a static value in context  | `outputKey`, `value`                                                                                                               |
+| `IfElse`      | Conditional branching          | `condition` (in params); `trueBranch`, `falseBranch` (sibling arrays)                                                              |
+| `Parallel`    | Run branches concurrently      | `waitAll`, `abortOnBranchFailure` (in params); `branches` (array of arrays)                                                        |
+| `Retry`       | Retry a node on failure        | `maxAttempts`, `delayMs`, `backoffMultiplier` (in params); `inner` (single node)                                                   |
+| `WhileLoop`   | Loop while condition is true   | `condition`, `maxIterations`, `iterationDelayMs` (in params); `body` (node array)                                                  |
 
-> Nodes that require C# code (IfElse, Parallel, Retry, WhileLoop, DatabaseQuery) are not available in JSON definitions. See [07-custom-nodes.md](07-custom-nodes.md).
+> `DatabaseQueryNode` requires a typed EF Core delegate and cannot be used in JSON definitions. See [07-custom-nodes.md](07-custom-nodes.md).
 
 ---
 
@@ -655,16 +918,16 @@ Endpoints for creating, updating, and managing automated flow schedule triggers.
 
 ### Endpoint Summary
 
-| Method   | Route                      | Description                                   |
-| -------- | -------------------------- | --------------------------------------------- |
-| `GET`    | `/schedules`               | List all schedules                            |
-| `GET`    | `/schedules/{key}`         | Get schedule details with next fire time      |
-| `POST`   | `/schedules`               | Create a new schedule                         |
-| `PUT`    | `/schedules/{key}`         | Update a schedule (re-registers in Quartz)    |
-| `PATCH`  | `/schedules/{key}/toggle`  | Enable or disable (pause/resume in Quartz)    |
-| `DELETE` | `/schedules/{key}`         | Soft-delete and unregister from Quartz        |
-| `POST`   | `/schedules/{key}/run-now` | Trigger the schedule immediately              |
-| `GET`    | `/schedules/{key}/runs`    | List runs triggered by this schedule          |
+| Method   | Route                      | Description                                |
+| -------- | -------------------------- | ------------------------------------------ |
+| `GET`    | `/schedules`               | List all schedules                         |
+| `GET`    | `/schedules/{key}`         | Get schedule details with next fire time   |
+| `POST`   | `/schedules`               | Create a new schedule                      |
+| `PUT`    | `/schedules/{key}`         | Update a schedule (re-registers in Quartz) |
+| `PATCH`  | `/schedules/{key}/toggle`  | Enable or disable (pause/resume in Quartz) |
+| `DELETE` | `/schedules/{key}`         | Soft-delete and unregister from Quartz     |
+| `POST`   | `/schedules/{key}/run-now` | Trigger the schedule immediately           |
+| `GET`    | `/schedules/{key}/runs`    | List runs triggered by this schedule       |
 
 ---
 
@@ -711,8 +974,8 @@ Get schedule details including the next calculated fire time.
 
 **Path Parameters:**
 
-| Parameter | Type     | Description                               |
-| --------- | -------- | ----------------------------------------- |
+| Parameter | Type     | Description                                |
+| --------- | -------- | ------------------------------------------ |
 | `key`     | `string` | Unique schedule key (e.g., `daily_report`) |
 
 **Response** `200 OK`:
@@ -749,26 +1012,26 @@ Create a new schedule and register it with Quartz.
 
 **Request Body** (`FlowScheduleSaveRequestDTO`):
 
-| Field               | Type                        | Required | Description                                             |
-| ------------------- | --------------------------- | -------- | ------------------------------------------------------- |
-| `scheduleKey`       | `string`                    | Yes      | Unique slug for the schedule                            |
-| `displayName`       | `string`                    | No       | Human-readable label                                    |
-| `definitionKey`     | `string`                    | Yes      | Must match an existing flow definition key              |
-| `scheduleType`      | `string`                    | Yes      | `"cron"`, `"interval"`, or `"once"`                     |
-| `cronExpression`    | `string`                    | *        | Quartz 6-field cron expression (required for `cron`)    |
-| `intervalMinutes`   | `int`                       | *        | Repeat interval in minutes (required for `interval`)    |
-| `runOnceAt`         | `long`                      | *        | Unix timestamp for execution (required for `once`)      |
-| `defaultParameters` | `Dictionary<string,string>` | No       | Key-value pairs passed to the definition on each run    |
-| `timeZone`          | `string`                    | No       | IANA timezone ID (default: `"UTC"`)                     |
+| Field               | Type                        | Required | Description                                                |
+| ------------------- | --------------------------- | -------- | ---------------------------------------------------------- |
+| `scheduleKey`       | `string`                    | Yes      | Unique slug for the schedule                               |
+| `displayName`       | `string`                    | No       | Human-readable label                                       |
+| `definitionKey`     | `string`                    | Yes      | Must match an existing flow definition key                 |
+| `scheduleType`      | `string`                    | Yes      | `"cron"`, `"interval"`, or `"once"`                        |
+| `cronExpression`    | `string`                    | \*       | Quartz 6-field cron expression (required for `cron`)       |
+| `intervalMinutes`   | `int`                       | \*       | Repeat interval in minutes (required for `interval`)       |
+| `runOnceAt`         | `long`                      | \*       | Unix timestamp for execution (required for `once`)         |
+| `defaultParameters` | `Dictionary<string,string>` | No       | Key-value pairs passed to the definition on each run       |
+| `timeZone`          | `string`                    | No       | IANA timezone ID (default: `"UTC"`)                        |
 | `maxConcurrent`     | `int`                       | No       | Max concurrent runs; `1` = skip overlapping (default: `1`) |
 
 **Schedule types:**
 
-| Type       | Description                              | Required field      |
-| ---------- | ---------------------------------------- | ------------------- |
-| `cron`     | Runs on a cron schedule                  | `cronExpression`    |
-| `interval` | Runs every N minutes                     | `intervalMinutes`   |
-| `once`     | Runs once at a specific time             | `runOnceAt`         |
+| Type       | Description                  | Required field    |
+| ---------- | ---------------------------- | ----------------- |
+| `cron`     | Runs on a cron schedule      | `cronExpression`  |
+| `interval` | Runs every N minutes         | `intervalMinutes` |
+| `once`     | Runs once at a specific time | `runOnceAt`       |
 
 **Example: Cron Schedule**
 
@@ -952,20 +1215,20 @@ The `FlowDefinitionRun` table provides additional detail including the definitio
 
 | Moment                          | Status      | Fields Updated                                       |
 | ------------------------------- | ----------- | ---------------------------------------------------- |
-| `FlowBuilder.StartAsync()`     | `pending`   | ServiceId, FlowName, Config, TotalNodes, ContextMeta |
-| `FlowRunner` begins execution  | `running`   | StartedAt                                            |
+| `FlowBuilder.StartAsync()`      | `pending`   | ServiceId, FlowName, Config, TotalNodes, ContextMeta |
+| `FlowRunner` begins execution   | `running`   | StartedAt                                            |
 | All nodes complete successfully | `completed` | CompletedAt, DurationMs                              |
 | A node failure occurs           | `failed`    | ErrorMessage, CompletedAt                            |
 
 ### What Gets Recorded for Each Node
 
-| Moment              | Status      | Fields Updated                        |
-| ------------------- | ----------- | ------------------------------------- |
-| Node starts         | `running`   | StartedAt, Sequence, InputData        |
-| Node succeeds       | `completed` | OutputData, CompletedAt, DurationMs   |
-| Node fails          | `failed`    | ErrorMessage, RetryCount              |
-| Node is skipped     | `skipped`   | _(no timing data)_                    |
-| IfElse resolves     | `completed` | BranchTaken (`"true"` or `"false"`)   |
+| Moment          | Status      | Fields Updated                      |
+| --------------- | ----------- | ----------------------------------- |
+| Node starts     | `running`   | StartedAt, Sequence, InputData      |
+| Node succeeds   | `completed` | OutputData, CompletedAt, DurationMs |
+| Node fails      | `failed`    | ErrorMessage, RetryCount            |
+| Node is skipped | `skipped`   | _(no timing data)_                  |
+| IfElse resolves | `completed` | BranchTaken (`"true"` or `"false"`) |
 
 ### Run Status Lifecycle
 
@@ -995,47 +1258,91 @@ Each run captures caller metadata (stored as JSON in `FlowRun.ContextMeta`):
 
 ### HTTP Status Codes
 
-| Code  | Meaning               | When                                                          |
-| ----- | --------------------- | ------------------------------------------------------------- |
-| `200` | OK                    | Successful operation (including creates and deletes)          |
-| `400` | Bad Request           | Missing required field, invalid input, or trigger failure     |
-| `404` | Not Found             | Resource with given ID/key does not exist or is soft-deleted  |
+| Code  | Meaning     | When                                                         |
+| ----- | ----------- | ------------------------------------------------------------ |
+| `200` | OK          | Successful operation (including creates and deletes)         |
+| `400` | Bad Request | Missing required field, invalid input, or trigger failure    |
+| `404` | Not Found   | Resource with given ID/key does not exist or is soft-deleted |
+| `409` | Conflict    | Optimistic concurrency mismatch (If-Match header)            |
+
+### Error Codes
+
+Responses include a `code` field for programmatic error handling:
+
+| Code                      | Description                                               |
+| ------------------------- | --------------------------------------------------------- |
+| `DEFINITION_NOT_FOUND`    | Definition key does not exist                             |
+| `INVALID_FLOW_JSON`       | FlowJson failed structural validation                     |
+| `PARAMETER_REQUIRED`      | A required parameter is missing                           |
+| `PARAMETER_TYPE_MISMATCH` | Parameter value doesn't match the declared type           |
+| `VERSION_CONFLICT`        | If-Match version doesn't match current version            |
+| `DEFINITION_INACTIVE`     | Attempted to trigger an inactive definition               |
+| `TRIGGER_FAILED`          | Definition trigger failed (missing, inactive, or invalid) |
+| `VALIDATION_RESULT`       | Returned on validate/dry-run success                      |
+| `VERSION_NOT_FOUND`       | Specific version not found for the given key              |
+| `IMPORT_FAILED`           | FlowJson validation failed during import                  |
+| `SCHEDULE_NOT_FOUND`      | Schedule key does not exist                               |
+| `RUN_NOT_FOUND`           | Flow run not found                                        |
+| `KEY_REQUIRED`            | DefinitionKey is required but was empty                   |
 
 ### Common Error Responses
 
-**Missing required field:**
+**Validation failure:**
 
 ```json
-{ "error": true, "message": "DefinitionKey is required" }
+{
+  "error": true,
+  "code": "INVALID_FLOW_JSON",
+  "message": "FlowJson validation failed",
+  "data": ["nodes[0]: missing or empty 'name' property."]
+}
 ```
 
 **Resource not found:**
 
 ```json
-{ "error": true, "message": "Definition not found" }
+{
+  "error": true,
+  "code": "DEFINITION_NOT_FOUND",
+  "message": "Definition not found"
+}
 ```
 
-**Trigger failure (definition inactive or missing):**
+**Version conflict:**
 
 ```json
-{ "error": true, "message": "Flow definition 'unknown_key' not found or is inactive." }
+{
+  "error": true,
+  "code": "VERSION_CONFLICT",
+  "message": "Version conflict: expected v1, current is v2"
+}
+```
+
+**Trigger failure:**
+
+```json
+{
+  "error": true,
+  "code": "TRIGGER_FAILED",
+  "message": "Flow definition 'unknown_key' not found or is inactive."
+}
 ```
 
 ### Run Status Values
 
-| Status      | Description                                          |
-| ----------- | ---------------------------------------------------- |
-| `pending`   | Run created, waiting to start                        |
-| `running`   | Actively executing nodes                             |
-| `completed` | All nodes finished successfully                      |
-| `failed`    | A node failed (and `OnFailure` was set to `Stop`)    |
-| `cancelled` | Execution timed out (`MaxExecutionTime` exceeded)    |
+| Status      | Description                                       |
+| ----------- | ------------------------------------------------- |
+| `pending`   | Run created, waiting to start                     |
+| `running`   | Actively executing nodes                          |
+| `completed` | All nodes finished successfully                   |
+| `failed`    | A node failed (and `OnFailure` was set to `Stop`) |
+| `cancelled` | Execution timed out (`MaxExecutionTime` exceeded) |
 
 ### Node Status Values
 
-| Status      | Description                          |
-| ----------- | ------------------------------------ |
-| `running`   | Node is currently executing          |
-| `completed` | Node finished successfully           |
-| `failed`    | Node threw an error                  |
-| `skipped`   | Node was bypassed (e.g., IfElse)     |
+| Status      | Description                      |
+| ----------- | -------------------------------- |
+| `running`   | Node is currently executing      |
+| `completed` | Node finished successfully       |
+| `failed`    | Node threw an error              |
+| `skipped`   | Node was bypassed (e.g., IfElse) |

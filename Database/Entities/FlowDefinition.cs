@@ -29,6 +29,13 @@ public class FlowDefinition
     [MaxLength(500)]
     public string Tags { get; set; } = "";
 
+    /// <summary>
+    /// Optional JSON schema describing parameters this definition accepts.
+    /// Format: { "paramName": { "type": "string|number|boolean", "required": true, "default": "..." } }
+    /// </summary>
+    [MaxLength(2000)]
+    public string? ParameterSchema { get; set; }
+
     public long LastModifiedBy { get; set; }
     public long TimeCreated { get; set; }
     public long TimeUpdated { get; set; }

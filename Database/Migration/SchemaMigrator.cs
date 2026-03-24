@@ -11,10 +11,10 @@ namespace Bikiran.Engine.Database.Migration;
 public class SchemaMigrator
 {
     /// <summary>Current schema version embedded in this package version.</summary>
-    public const string CurrentSchemaVersion = "1.0.1";
+    public const string CurrentSchemaVersion = "1.1.0";
 
     /// <summary>NuGet package version.</summary>
-    public const string PackageVersion = "1.0.1";
+    public const string PackageVersion = "1.1.0";
 
     private readonly EngineDbContext _db;
     private readonly ILogger<SchemaMigrator>? _logger;
@@ -174,6 +174,7 @@ public class SchemaMigrator
                 `IsActive` tinyint(1) NOT NULL DEFAULT 1,
                 `FlowJson` longtext NOT NULL,
                 `Tags` varchar(500) NOT NULL DEFAULT '',
+                `ParameterSchema` varchar(2000) NULL,
                 `LastModifiedBy` bigint NOT NULL DEFAULT 0,
                 `TimeCreated` bigint NOT NULL DEFAULT 0,
                 `TimeUpdated` bigint NOT NULL DEFAULT 0,
@@ -232,13 +233,34 @@ public class SchemaMigrator
     /// Applies incremental migration scripts based on the currently stored schema version.
     /// Add new migration blocks here as the package evolves.
     /// </summary>
-    private Task ApplyMigrationsAsync(FlowSchemaVersion current)
+    private async Task ApplyMigrationsAsync(FlowSchemaVersion current)
     {
-        // Example future migration block:
-        // if (string.Compare(current.SchemaVersion, "1.1.0", StringComparison.Ordinal) < 0)
-        //     await _db.Database.ExecuteSqlRawAsync("ALTER TABLE FlowRun ADD COLUMN ...");
+        // Migration: 1.0.x → 1.1.0: Add ParameterSchema column to FlowDefinition
+        if (string.Compare(current.SchemaVersion, "1.1.0", StringComparison.Ordinal) < 0)
+        {
+            var providerName = _db.Database.ProviderName ?? "";
+            var isMySql = providerName.Contains("MySql", StringComparison.OrdinalIgnoreCase) ||
+                          providerName.Contains("Pomelo", StringComparison.OrdinalIgnoreCase);
 
-        // No additional migrations needed for version 1.0.0
-        return Task.CompletedTask;
+            if (isMySql)
+            {
+                // Check if column already exists to avoid error on re-run
+                await _db.Database.ExecuteSqlRawAsync("""
+                    SET @col_exists = (
+                        SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS
+                        WHERE TABLE_NAME = 'FlowDefinition' AND COLUMN_NAME = 'ParameterSchema'
+                        AND TABLE_SCHEMA = DATABASE()
+                    );
+                    SET @sql = IF(@col_exists = 0,
+                        'ALTER TABLE `FlowDefinition` ADD COLUMN `ParameterSchema` varchar(2000) NULL AFTER `Tags`',
+                        'SELECT 1');
+                    PREPARE stmt FROM @sql;
+                    EXECUTE stmt;
+                    DEALLOCATE PREPARE stmt;
+                    """);
+            }
+
+            _logger?.LogInformation("Bikiran.Engine: Applied migration to 1.1.0 (ParameterSchema column).");
+        }
     }
 }

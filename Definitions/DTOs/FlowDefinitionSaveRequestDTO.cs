@@ -17,4 +17,10 @@ public class FlowDefinitionSaveRequestDTO
 
     /// <summary>Comma-separated tags for categorisation (e.g., "email,auth").</summary>
     public string Tags { get; set; } = "";
+
+    /// <summary>
+    /// Optional JSON schema describing accepted runtime parameters.
+    /// Format: { "paramName": { "type": "string|number|boolean", "required": true, "default": "..." } }
+    /// </summary>
+    public string? ParameterSchema { get; set; }
 }

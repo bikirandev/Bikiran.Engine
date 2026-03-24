@@ -22,6 +22,17 @@ public class BikiranEngineOptions
     /// </summary>
     public bool EnableNodeLogging { get; set; } = true;
 
+    /// <summary>
+    /// When true, engine API endpoints require authentication. Default is false.
+    /// </summary>
+    public bool RequireAuthentication { get; set; }
+
+    /// <summary>
+    /// Name of the ASP.NET Core authorization policy to apply to engine endpoints.
+    /// Only used when RequireAuthentication is true.
+    /// </summary>
+    public string? AuthorizationPolicy { get; set; }
+
     // Internal credential registry
     internal Dictionary<string, IEngineCredential> Credentials { get; } = new();
 

@@ -119,37 +119,39 @@ CREATE TABLE FlowNodeLog (
 
 Stores reusable flow templates as JSON.
 
-| Column           | Type         | Default | Description                                 |
-| ---------------- | ------------ | ------- | ------------------------------------------- |
-| `Id`             | BIGINT (PK)  | auto    | Primary key                                 |
-| `DefinitionKey`  | VARCHAR(100) | —       | Unique slug (e.g., `"order_notification"`)  |
-| `DisplayName`    | VARCHAR(200) | —       | Human-readable label                        |
-| `Description`    | TEXT         | `""`    | Optional description                        |
-| `Version`        | INT          | `1`     | Incremented on each save                    |
-| `IsActive`       | TINYINT(1)   | `1`     | Whether this definition can be triggered    |
-| `FlowJson`       | MEDIUMTEXT   | `"{}"`  | JSON body describing the flow and its nodes |
-| `Tags`           | VARCHAR(500) | `""`    | Comma-separated tags                        |
-| `LastModifiedBy` | BIGINT       | `0`     | User ID of last editor                      |
-| `TimeCreated`    | BIGINT       | —       | Record creation timestamp                   |
-| `TimeUpdated`    | BIGINT       | —       | Last update timestamp                       |
-| `TimeDeleted`    | BIGINT       | `0`     | Soft-delete timestamp                       |
+| Column           | Type           | Default | Description                                 |
+| ---------------- | -------------- | ------- | ------------------------------------------- |
+| `Id`             | BIGINT (PK)    | auto    | Primary key                                 |
+| `DefinitionKey`  | VARCHAR(100)   | —       | Unique slug (e.g., `"order_notification"`)  |
+| `DisplayName`    | VARCHAR(200)   | —       | Human-readable label                        |
+| `Description`    | TEXT           | `""`    | Optional description                        |
+| `Version`        | INT            | `1`     | Incremented on each save                    |
+| `IsActive`       | TINYINT(1)     | `1`     | Whether this definition can be triggered    |
+| `FlowJson`       | MEDIUMTEXT     | `"{}"`  | JSON body describing the flow and its nodes |
+| `Tags`           | VARCHAR(500)   | `""`    | Comma-separated tags                        |
+| `ParameterSchema`| VARCHAR(2000)  | `NULL`  | JSON schema for runtime parameters          |
+| `LastModifiedBy` | BIGINT         | `0`     | User ID of last editor                      |
+| `TimeCreated`    | BIGINT         | —       | Record creation timestamp                   |
+| `TimeUpdated`    | BIGINT         | —       | Last update timestamp                       |
+| `TimeDeleted`    | BIGINT         | `0`     | Soft-delete timestamp                       |
 
 **Unique constraint:** `(DefinitionKey, Version)` — each key can have multiple versions.
 
 ```sql
 CREATE TABLE FlowDefinition (
-    Id              BIGINT AUTO_INCREMENT PRIMARY KEY,
-    DefinitionKey   VARCHAR(100) NOT NULL,
-    DisplayName     VARCHAR(200) NOT NULL,
-    Description     TEXT         NOT NULL DEFAULT '',
-    Version         INT          NOT NULL DEFAULT 1,
-    IsActive        TINYINT(1)   NOT NULL DEFAULT 1,
-    FlowJson        MEDIUMTEXT   NOT NULL,
-    Tags            VARCHAR(500) NOT NULL DEFAULT '',
-    LastModifiedBy  BIGINT       NOT NULL DEFAULT 0,
-    TimeCreated     BIGINT       NOT NULL,
-    TimeUpdated     BIGINT       NOT NULL,
-    TimeDeleted     BIGINT       NOT NULL DEFAULT 0,
+    Id               BIGINT AUTO_INCREMENT PRIMARY KEY,
+    DefinitionKey    VARCHAR(100)  NOT NULL,
+    DisplayName      VARCHAR(200)  NOT NULL,
+    Description      TEXT          NOT NULL DEFAULT '',
+    Version          INT           NOT NULL DEFAULT 1,
+    IsActive         TINYINT(1)    NOT NULL DEFAULT 1,
+    FlowJson         MEDIUMTEXT    NOT NULL,
+    Tags             VARCHAR(500)  NOT NULL DEFAULT '',
+    ParameterSchema  VARCHAR(2000) NULL,
+    LastModifiedBy   BIGINT        NOT NULL DEFAULT 0,
+    TimeCreated      BIGINT        NOT NULL,
+    TimeUpdated      BIGINT        NOT NULL,
+    TimeDeleted      BIGINT        NOT NULL DEFAULT 0,
     UNIQUE KEY uq_key_version (DefinitionKey, Version)
 );
 ```

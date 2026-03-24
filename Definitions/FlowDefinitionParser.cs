@@ -7,7 +7,8 @@ namespace Bikiran.Engine.Definitions;
 
 /// <summary>
 /// Parses a flow definition JSON string into a FlowBuilder ready for execution.
-/// Supports built-in node types and custom-registered node types.
+/// Supports built-in node types (including IfElse, Parallel, Retry, WhileLoop)
+/// and custom-registered node types.
 /// </summary>
 public class FlowDefinitionParser
 {
@@ -19,6 +20,9 @@ public class FlowDefinitionParser
     {
         _customNodeTypes[typeName] = typeof(T);
     }
+
+    /// <summary>Returns true if a custom node type is registered with the given name.</summary>
+    public static bool IsCustomNodeRegistered(string typeName) => _customNodeTypes.ContainsKey(typeName);
 
     /// <summary>
     /// Parses the flow JSON and returns a configured FlowBuilder.
@@ -71,7 +75,8 @@ public class FlowDefinitionParser
         return builder;
     }
 
-    private IFlowNode? BuildNode(JsonElement el)
+    /// <summary>Recursively builds a node from a JSON element, including nested structures.</summary>
+    internal IFlowNode? BuildNode(JsonElement el)
     {
         var type = el.TryGetProperty("type", out var t) ? t.GetString() ?? "" : "";
         var name = el.TryGetProperty("name", out var n) ? n.GetString() ?? "" : "";
@@ -83,8 +88,25 @@ public class FlowDefinitionParser
             "HttpRequest" => BuildHttpRequestNode(name, paramsEl),
             "EmailSend" => BuildEmailSendNode(name, paramsEl),
             "Transform" => BuildTransformNode(name, paramsEl),
+            "IfElse" => BuildIfElseNode(name, paramsEl, el),
+            "Parallel" => BuildParallelNode(name, paramsEl, el),
+            "Retry" => BuildRetryNode(name, paramsEl, el),
+            "WhileLoop" => BuildWhileLoopNode(name, paramsEl, el),
             _ => BuildCustomNode(type, name, paramsEl)
         };
+    }
+
+    /// <summary>Parses a JSON array of node definitions into a list of IFlowNode.</summary>
+    private List<IFlowNode> ParseNodeList(JsonElement arrayEl)
+    {
+        var nodes = new List<IFlowNode>();
+        foreach (var nodeEl in arrayEl.EnumerateArray())
+        {
+            var node = BuildNode(nodeEl);
+            if (node != null)
+                nodes.Add(node);
+        }
+        return nodes;
     }
 
     private static WaitNode BuildWaitNode(string name, JsonElement? p)
@@ -173,6 +195,86 @@ public class FlowDefinitionParser
             var staticValue = val.GetString();
             node.Transform = _ => staticValue;
         }
+
+        return node;
+    }
+
+    private IfElseNode BuildIfElseNode(string name, JsonElement? p, JsonElement el)
+    {
+        var condition = p.HasValue && p.Value.TryGetProperty("condition", out var c)
+            ? c.GetString() ?? "" : "";
+
+        var node = new IfElseNode(name)
+        {
+            Condition = ctx => ExpressionEvaluator.Evaluate(condition, ctx)
+        };
+
+        if (el.TryGetProperty("trueBranch", out var trueBranch))
+            node.TrueBranch = ParseNodeList(trueBranch);
+        if (el.TryGetProperty("falseBranch", out var falseBranch))
+            node.FalseBranch = ParseNodeList(falseBranch);
+
+        return node;
+    }
+
+    private ParallelNode BuildParallelNode(string name, JsonElement? p, JsonElement el)
+    {
+        var node = new ParallelNode(name);
+
+        if (p.HasValue)
+        {
+            if (p.Value.TryGetProperty("waitAll", out var wa)) node.WaitAll = wa.GetBoolean();
+            if (p.Value.TryGetProperty("abortOnBranchFailure", out var aobf)) node.AbortOnBranchFailure = aobf.GetBoolean();
+        }
+
+        if (el.TryGetProperty("branches", out var branchesEl))
+        {
+            foreach (var branchEl in branchesEl.EnumerateArray())
+                node.Branches.Add(ParseNodeList(branchEl));
+        }
+
+        return node;
+    }
+
+    private RetryNode BuildRetryNode(string name, JsonElement? p, JsonElement el)
+    {
+        IFlowNode? inner = null;
+        if (el.TryGetProperty("inner", out var innerEl))
+            inner = BuildNode(innerEl);
+
+        var node = new RetryNode(name)
+        {
+            Inner = inner ?? new WaitNode(name + "_noop") { DelayMs = 0 }
+        };
+
+        if (p.HasValue)
+        {
+            if (p.Value.TryGetProperty("maxAttempts", out var ma)) node.MaxAttempts = ma.GetInt32();
+            if (p.Value.TryGetProperty("delayMs", out var d)) node.DelayMs = d.GetInt32();
+            if (p.Value.TryGetProperty("backoffMultiplier", out var bm)) node.BackoffMultiplier = bm.GetDouble();
+        }
+
+        return node;
+    }
+
+    private WhileLoopNode BuildWhileLoopNode(string name, JsonElement? p, JsonElement el)
+    {
+        var condition = p.HasValue && p.Value.TryGetProperty("condition", out var c)
+            ? c.GetString() ?? "" : "";
+
+        var node = new WhileLoopNode(name)
+        {
+            Condition = ctx => ExpressionEvaluator.Evaluate(condition, ctx)
+        };
+
+        if (p.HasValue)
+        {
+            if (p.Value.TryGetProperty("maxIterations", out var mi)) node.MaxIterations = mi.GetInt32();
+            if (p.Value.TryGetProperty("iterationDelayMs", out var id)) node.IterationDelayMs = id.GetInt32();
+        }
+
+        if (el.TryGetProperty("body", out var bodyEl))
+            node.Body = ParseNodeList(bodyEl);
 
         return node;
     }
