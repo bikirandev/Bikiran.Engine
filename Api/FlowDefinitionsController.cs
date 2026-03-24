@@ -73,6 +73,12 @@ public class FlowDefinitionsController : ControllerBase
         if (string.IsNullOrWhiteSpace(dto.DefinitionKey))
             return BadRequest(new { error = true, message = "DefinitionKey is required" });
 
+        var exists = await _db.FlowDefinition
+            .AnyAsync(d => d.DefinitionKey == dto.DefinitionKey && d.TimeDeleted == 0);
+
+        if (exists)
+            return Conflict(new { error = true, message = "A definition with this key already exists. Use PUT to update it." });
+
         var def = new FlowDefinition
         {
             DefinitionKey = dto.DefinitionKey,
@@ -101,7 +107,10 @@ public class FlowDefinitionsController : ControllerBase
             .OrderByDescending(d => d.Version)
             .FirstOrDefaultAsync();
 
-        var nextVersion = (latest?.Version ?? 0) + 1;
+        if (latest == null)
+            return NotFound(new { error = true, message = "Definition not found" });
+
+        var nextVersion = latest.Version + 1;
 
         var def = new FlowDefinition
         {
