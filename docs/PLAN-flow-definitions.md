@@ -1,27 +1,28 @@
 # Flow Definitions — Enhancement Plan
 
-> **Package:** Bikiran.Engine v1.0.2  
+> **Package:** Bikiran.Engine v1.2.0  
 > **Date:** 2026-03-24  
 > **Status:** Planning  
-> **Scope:** Extend the Flow Definitions subsystem with new JSON node support, validation, auth, import/export, versioning, parameter schemas, error handling, and testing.
+> **Scope:** Extend the Flow Definitions subsystem with flow lifecycle events, new JSON node support, validation, auth, import/export, versioning, parameter schemas, error handling, and testing.
 
 ---
 
 ## Table of Contents
 
 1. [Overview](#1-overview)
-2. [Phase 1 — JSON Node Support Expansion](#2-phase-1--json-node-support-expansion)
-3. [Phase 2 — FlowJson Validation on Save](#3-phase-2--flowjson-validation-on-save)
-4. [Phase 3 — API Authentication & Authorization](#4-phase-3--api-authentication--authorization)
-5. [Phase 4 — Definition Import / Export](#5-phase-4--definition-import--export)
-6. [Phase 5 — Versioning & Rollback](#6-phase-5--versioning--rollback)
-7. [Phase 6 — Parameter Schema & Validation](#7-phase-6--parameter-schema--validation)
-8. [Phase 7 — Error Handling & Debugging](#8-phase-7--error-handling--debugging)
-9. [Phase 8 — Testing Strategy](#9-phase-8--testing-strategy)
-10. [File Impact Matrix](#10-file-impact-matrix)
-11. [Verification Checklist](#11-verification-checklist)
-12. [Design Decisions](#12-design-decisions)
-13. [Open Questions](#13-open-questions)
+2. [Phase 0 — Flow Lifecycle Events (OnSuccess / OnFail / OnFinish)](#2-phase-0--flow-lifecycle-events-onsuccess--onfail--onfinish)
+3. [Phase 1 — JSON Node Support Expansion](#3-phase-1--json-node-support-expansion)
+4. [Phase 2 — FlowJson Validation on Save](#4-phase-2--flowjson-validation-on-save)
+5. [Phase 3 — API Authentication & Authorization](#5-phase-3--api-authentication--authorization)
+6. [Phase 4 — Definition Import / Export](#6-phase-4--definition-import--export)
+7. [Phase 5 — Versioning & Rollback](#7-phase-5--versioning--rollback)
+8. [Phase 6 — Parameter Schema & Validation](#8-phase-6--parameter-schema--validation)
+9. [Phase 7 — Error Handling & Debugging](#9-phase-7--error-handling--debugging)
+10. [Phase 8 — Testing Strategy](#10-phase-8--testing-strategy)
+11. [File Impact Matrix](#11-file-impact-matrix)
+12. [Verification Checklist](#12-verification-checklist)
+13. [Design Decisions](#13-design-decisions)
+14. [Open Questions](#14-open-questions)
 
 ---
 
@@ -48,7 +49,78 @@ The current Flow Definitions feature allows saving reusable JSON flow templates 
 
 ---
 
-## 2. Phase 1 — JSON Node Support Expansion
+## 2. Phase 0 — Flow Lifecycle Events (OnSuccess / OnFail / OnFinish)
+
+> **Status:** ✅ Completed (v1.2.0)
+
+### 2.1 Overview
+
+Add three lifecycle event hooks to `FlowBuilder` that let callers attach nodes to run **after** the main node sequence finishes:
+
+| Event          | Fires When                                        | Use Case                          |
+| -------------- | ------------------------------------------------- | --------------------------------- |
+| **OnSuccess**  | All main nodes completed without failure           | Success logging, cleanup          |
+| **OnFail**     | The flow ended with a failure (error or timeout)   | Alert notifications, rollback     |
+| **OnFinish**   | Always, after success/fail handlers have run        | Final cleanup, audit logging      |
+
+**Execution order:** Main nodes → OnSuccess _or_ OnFail → OnFinish
+
+### 2.2 FlowBuilder API
+
+New fluent methods on `FlowBuilder`:
+
+```csharp
+.OnSuccess(IFlowNode node)   // called once per handler; can chain multiple
+.OnFail(IFlowNode node)
+.OnFinish(IFlowNode node)
+```
+
+**Usage example:**
+
+```csharp
+var serviceId = await FlowBuilder
+    .Create("add_domain")
+    .AddNode(new CfDNSAddNode("add_cf_record") { ... })
+    .AddNode(new WaitNode("wait_for_dns") { DelayMs = 15000 })
+    .OnSuccess(new SuccessLogNode("on_success_log") { Param1 = "" })
+    .OnFail(new FailLogNode("on_fail_log") { Param1 = "" })
+    .OnFinish(new FinishLogNode("on_finish_log") { Param1 = "" })
+    .StartAsync();
+```
+
+### 2.3 FlowContext Additions
+
+Expose flow outcome information to lifecycle event nodes:
+
+```csharp
+public string? FlowStatus { get; internal set; }   // "completed" or "failed"
+public string? FlowError { get; internal set; }     // error message if failed, null on success
+```
+
+### 2.4 FlowRunner Changes
+
+After the main node loop completes:
+
+1. Determine `flowError` (null = success, non-null = failure)
+2. Set `context.FlowStatus` and `context.FlowError`
+3. If success and `OnSuccessNodes` is not empty → execute them sequentially (failures logged, do not change flow status)
+4. If failure and `OnFailNodes` is not empty → execute them sequentially (failures logged, do not change flow status)
+5. Always: if `OnFinishNodes` is not empty → execute them sequentially (failures logged, do not change flow status)
+6. Lifecycle event nodes are logged in the node log table with their own entries if `EnableNodeLogging` is on
+
+### 2.5 Files Changed
+
+| File                          | Change                                                        |
+| ----------------------------- | ------------------------------------------------------------- |
+| `Core/FlowBuilder.cs`        | Add `_onSuccessNodes`, `_onFailNodes`, `_onFinishNodes` lists, fluent methods, pass to runner |
+| `Core/FlowRunner.cs`         | Execute lifecycle nodes after main loop                       |
+| `Core/FlowContext.cs`        | Add `FlowStatus` and `FlowError` properties                  |
+| `docs/03-building-flows.md`  | Document lifecycle events                                     |
+| `docs/10-examples.md`        | Add lifecycle event example                                   |
+
+---
+
+## 3. Phase 1 — JSON Node Support Expansion
 
 ### 2.1 Recursive Node Parsing _(blocks 2.2 – 2.4)_
 
@@ -201,7 +273,7 @@ The current Flow Definitions feature allows saving reusable JSON flow templates 
 
 ---
 
-## 3. Phase 2 — FlowJson Validation on Save
+## 4. Phase 2 — FlowJson Validation on Save
 
 ### 3.1 Create `FlowJsonValidator`
 
@@ -263,7 +335,7 @@ Content-Type: application/json
 
 ---
 
-## 4. Phase 3 — API Authentication & Authorization
+## 5. Phase 3 — API Authentication & Authorization
 
 ### 4.1 Auth Options
 
@@ -298,7 +370,7 @@ public bool RequireAuthentication { get; set; } = false;
 
 ---
 
-## 5. Phase 4 — Definition Import / Export
+## 6. Phase 4 — Definition Import / Export
 
 ### 5.1 Export Single Definition
 
@@ -336,7 +408,7 @@ GET /api/bikiran-engine/definitions/export-all
 
 ---
 
-## 6. Phase 5 — Versioning & Rollback
+## 7. Phase 5 — Versioning & Rollback
 
 ### 6.1 Activate Specific Version
 
@@ -376,7 +448,7 @@ GET /api/bikiran-engine/definitions/{key}/versions/{v1}/diff/{v2}
 
 ---
 
-## 7. Phase 6 — Parameter Schema & Validation
+## 8. Phase 6 — Parameter Schema & Validation
 
 ### 7.1 Add ParameterSchema Column
 
@@ -444,7 +516,7 @@ Content-Type: application/json
 
 ---
 
-## 8. Phase 7 — Error Handling & Debugging
+## 9. Phase 7 — Error Handling & Debugging
 
 ### 8.1 Structured Error Codes
 
@@ -520,7 +592,7 @@ When a node fails during definition-triggered execution, enrich the error log wi
 
 ---
 
-## 9. Phase 8 — Testing Strategy
+## 10. Phase 8 — Testing Strategy
 
 ### 9.1 Test Project Setup
 
@@ -589,10 +661,13 @@ When a node fails during definition-triggered execution, enrich the error log wi
 
 ---
 
-## 10. File Impact Matrix
+## 11. File Impact Matrix
 
 | File                                               | Phase(s)      | Change Type                 |
 | -------------------------------------------------- | ------------- | --------------------------- |
+| `Core/FlowBuilder.cs`                              | 0             | Add lifecycle event methods |
+| `Core/FlowRunner.cs`                               | 0, 7          | Lifecycle execution, logging|
+| `Core/FlowContext.cs`                               | 0             | Add FlowStatus, FlowError  |
 | `Definitions/FlowDefinitionParser.cs`              | 1             | Major refactor              |
 | `Definitions/FlowDefinitionRunner.cs`              | 5, 6, 7       | Modify                      |
 | `Api/FlowDefinitionsController.cs`                 | 2, 3, 4, 5, 7 | Modify (many new endpoints) |
@@ -601,9 +676,10 @@ When a node fails during definition-triggered execution, enrich the error log wi
 | `Definitions/DTOs/FlowDefinitionSaveRequestDTO.cs` | 6             | Add field                   |
 | `Extensions/BikiranEngineOptions.cs`               | 3             | Add properties              |
 | `Extensions/EndpointExtensions.cs`                 | 3             | Add auth logic              |
-| `Core/FlowRunner.cs`                               | 7             | Enhanced logging            |
 | `Nodes/HttpRequestNode.cs`                         | 1             | Extract evaluator           |
+| `docs/03-building-flows.md`                        | 0             | Document lifecycle events   |
 | `docs/05-flow-definitions.md`                      | 1             | Update docs                 |
+| `docs/10-examples.md`                              | 0             | Add lifecycle example       |
 | **NEW** `Core/ExpressionEvaluator.cs`              | 1             | Create                      |
 | **NEW** `Definitions/FlowJsonValidator.cs`         | 2             | Create                      |
 | **NEW** `Api/ErrorCodes.cs`                        | 7             | Create                      |
@@ -611,11 +687,15 @@ When a node fails during definition-triggered execution, enrich the error log wi
 
 ---
 
-## 11. Verification Checklist
+## 12. Verification Checklist
 
-- [ ] `dotnet build` passes with zero errors and zero warnings
+- [x] `dotnet build` passes with zero errors and zero warnings
 - [ ] All unit tests pass (parser, validator, runner, expression evaluator)
 - [ ] All integration tests pass (WebApplicationFactory controller tests)
+- [x] **Lifecycle Events:** `.OnSuccess()` executes only on successful flow completion
+- [x] **Lifecycle Events:** `.OnFail()` executes only when the flow fails
+- [x] **Lifecycle Events:** `.OnFinish()` always executes after success/fail handlers
+- [x] **Lifecycle Events:** Lifecycle node failures are logged but do not change flow status
 - [ ] **IfElse:** Create definition with IfElse node → trigger with different params → correct branch executes
 - [ ] **Parallel:** Create definition with Parallel node → all branches execute concurrently
 - [ ] **Retry:** Create definition wrapping a failing HttpRequest → retries occur as configured
@@ -627,7 +707,7 @@ When a node fails during definition-triggered execution, enrich the error log wi
 
 ---
 
-## 12. Design Decisions
+## 13. Design Decisions
 
 | Decision                       | Choice                               | Rationale                                                             |
 | ------------------------------ | ------------------------------------ | --------------------------------------------------------------------- |
@@ -641,7 +721,7 @@ When a node fails during definition-triggered execution, enrich the error log wi
 
 ---
 
-## 13. Open Questions
+## 14. Open Questions
 
 | #   | Question                                                                          | Recommendation                                                  |
 | --- | --------------------------------------------------------------------------------- | --------------------------------------------------------------- |

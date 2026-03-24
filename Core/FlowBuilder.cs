@@ -14,6 +14,9 @@ public class FlowBuilder
 {
     private readonly string _flowName;
     private readonly List<IFlowNode> _nodes = new();
+    private readonly List<IFlowNode> _onSuccessNodes = new();
+    private readonly List<IFlowNode> _onFailNodes = new();
+    private readonly List<IFlowNode> _onFinishNodes = new();
     private FlowConfig _config = new();
     private Action<FlowContext>? _contextSetup;
 
@@ -49,6 +52,27 @@ public class FlowBuilder
         return this;
     }
 
+    /// <summary>Adds a node that runs only when all main nodes complete successfully.</summary>
+    public FlowBuilder OnSuccess(IFlowNode node)
+    {
+        _onSuccessNodes.Add(node);
+        return this;
+    }
+
+    /// <summary>Adds a node that runs only when the flow fails (error or timeout).</summary>
+    public FlowBuilder OnFail(IFlowNode node)
+    {
+        _onFailNodes.Add(node);
+        return this;
+    }
+
+    /// <summary>Adds a node that always runs after success/fail handlers complete.</summary>
+    public FlowBuilder OnFinish(IFlowNode node)
+    {
+        _onFinishNodes.Add(node);
+        return this;
+    }
+
     /// <summary>
     /// Saves the run record, starts background execution, and returns the ServiceId immediately.
     /// </summary>
@@ -60,7 +84,7 @@ public class FlowBuilder
         {
             try
             {
-                await runner.RunAsync(context, _nodes, CancellationToken.None);
+                await runner.RunAsync(context, _nodes, _onSuccessNodes, _onFailNodes, _onFinishNodes, CancellationToken.None);
             }
             catch (Exception ex)
             {
@@ -83,7 +107,7 @@ public class FlowBuilder
         var (context, scope, runner) = await PrepareAsync();
         try
         {
-            await runner.RunAsync(context, _nodes, CancellationToken.None);
+            await runner.RunAsync(context, _nodes, _onSuccessNodes, _onFailNodes, _onFinishNodes, CancellationToken.None);
         }
         finally
         {

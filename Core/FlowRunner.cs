@@ -19,8 +19,15 @@ internal class FlowRunner
 
     /// <summary>
     /// Runs all nodes in sequence with timeout protection, per-node logging, and failure handling.
+    /// After main nodes complete, executes lifecycle event nodes (OnSuccess/OnFail/OnFinish).
     /// </summary>
-    internal async Task RunAsync(FlowContext context, IReadOnlyList<IFlowNode> nodes, CancellationToken externalToken)
+    internal async Task RunAsync(
+        FlowContext context,
+        IReadOnlyList<IFlowNode> nodes,
+        IReadOnlyList<IFlowNode> onSuccessNodes,
+        IReadOnlyList<IFlowNode> onFailNodes,
+        IReadOnlyList<IFlowNode> onFinishNodes,
+        CancellationToken externalToken)
     {
         using var cts = CancellationTokenSource.CreateLinkedTokenSource(externalToken);
         cts.CancelAfter(context.Config.MaxExecutionTime);
@@ -116,10 +123,92 @@ internal class FlowRunner
         var runCompletedAtMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
         var status = flowError == null ? "completed" : "failed";
 
+        // Expose flow outcome to lifecycle event nodes
+        context.FlowStatus = status;
+        context.FlowError = flowError;
+
+        // Execute lifecycle event nodes
+        var lifecycleSequenceStart = nodes.Count + 1;
+
+        if (flowError == null && onSuccessNodes.Count > 0)
+        {
+            lifecycleSequenceStart = await ExecuteLifecycleNodesAsync(
+                context, onSuccessNodes, "OnSuccess", lifecycleSequenceStart, ct);
+        }
+        else if (flowError != null && onFailNodes.Count > 0)
+        {
+            lifecycleSequenceStart = await ExecuteLifecycleNodesAsync(
+                context, onFailNodes, "OnFail", lifecycleSequenceStart, ct);
+        }
+
+        if (onFinishNodes.Count > 0)
+        {
+            await ExecuteLifecycleNodesAsync(
+                context, onFinishNodes, "OnFinish", lifecycleSequenceStart, ct);
+        }
+
         await UpdateRunStatusAsync(context.ServiceId, status,
             completedAt: runCompletedAtMs / 1000,
             durationMs: runCompletedAtMs - runStartedAtMs,
             errorMessage: flowError);
+    }
+
+    // --- Lifecycle event helpers ---
+
+    /// <summary>
+    /// Executes lifecycle event nodes sequentially. Failures are logged but do not change flow status.
+    /// Returns the next available sequence number.
+    /// </summary>
+    private async Task<int> ExecuteLifecycleNodesAsync(
+        FlowContext context,
+        IReadOnlyList<IFlowNode> nodes,
+        string phase,
+        int sequenceStart,
+        CancellationToken ct)
+    {
+        var sequence = sequenceStart;
+
+        for (var i = 0; i < nodes.Count; i++)
+        {
+            var node = nodes[i];
+            var nodeStartedAt = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+
+            if (context.Config.EnableNodeLogging)
+                await CreateNodeLogAsync(context.ServiceId, node, sequence, "running", nodeStartedAt);
+
+            NodeResult result;
+            try
+            {
+                result = await node.ExecuteAsync(context, ct);
+            }
+            catch (OperationCanceledException)
+            {
+                result = NodeResult.Fail("max_execution_time_exceeded");
+            }
+            catch (Exception ex)
+            {
+                result = NodeResult.Fail(ex.Message);
+                context.Logger?.LogError(ex, "{Phase} node '{NodeName}' failed", phase, node.Name);
+            }
+
+            var nodeCompletedAt = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+            var durationMs = nodeCompletedAt - nodeStartedAt;
+
+            if (context.Config.EnableNodeLogging)
+            {
+                await UpdateNodeLogAsync(context.ServiceId, node.Name, sequence,
+                    result.Success ? "completed" : "failed",
+                    result.ErrorMessage,
+                    branchTaken: null,
+                    retryCount: 0,
+                    nodeCompletedAt / 1000,
+                    durationMs);
+            }
+
+            sequence++;
+        }
+
+        return sequence;
     }
 
     // --- Database helpers ---

@@ -294,3 +294,60 @@ public async Task<ActionResult> TestFlow()
 ```
 
 After running this endpoint, check the admin API at `/api/bikiran-engine/runs/{serviceId}` to see the full execution details.
+
+---
+
+## Lifecycle Events (OnSuccess / OnFail / OnFinish)
+
+Attach handlers that run after the main flow completes — useful for logging, alerts, and cleanup:
+
+```csharp
+var serviceId = await FlowBuilder
+    .Create("add_domain")
+    .Configure(cfg => {
+        cfg.MaxExecutionTime = TimeSpan.FromMinutes(5);
+        cfg.OnFailure = OnFailureAction.Stop;
+        cfg.TriggerSource = "DomainController";
+    })
+    .WithContext(ctx => {
+        ctx.HttpContext = HttpContext;
+        ctx.Logger = _logger;
+    })
+    .AddNode(new HttpRequestNode("add_dns_record") {
+        Url = "https://api.cloudflare.com/v4/zones/abc/dns_records",
+        Method = HttpMethod.Post,
+        Body = "{\"type\":\"A\",\"name\":\"app.example.com\",\"content\":\"1.2.3.4\"}",
+        OutputKey = "dns_result"
+    })
+    .AddNode(new WaitNode("wait_for_dns") { DelayMs = 15000 })
+    .AddNode(new HttpRequestNode("verify_dns") {
+        Url = "https://dns.google/resolve?name=app.example.com&type=A",
+        Method = HttpMethod.Get,
+        OutputKey = "dns_verify_result"
+    })
+    .OnSuccess(new HttpRequestNode("log_success") {
+        Url = "https://api.example.com/hooks/domain-provisioned",
+        Method = HttpMethod.Post,
+        Body = "{\"domain\":\"app.example.com\",\"status\":\"ok\"}"
+    })
+    .OnFail(new EmailSendNode("alert_on_failure") {
+        ToEmail = "devops@example.com",
+        Subject = "Domain provisioning failed",
+        HtmlBodyResolver = ctx =>
+            $"<p>Flow <b>{ctx.FlowName}</b> failed: {ctx.FlowError}</p>"
+    })
+    .OnFinish(new HttpRequestNode("audit_webhook") {
+        Url = "https://api.example.com/audit",
+        Method = HttpMethod.Post,
+        Body = "{\"event\":\"domain_flow_finished\"}"
+    })
+    .StartAsync();
+```
+
+**Execution order:**
+1. Main nodes run in sequence (add_dns_record → wait_for_dns → verify_dns)
+2. If all succeeded → `OnSuccess` handlers run
+3. If any failed → `OnFail` handlers run instead
+4. `OnFinish` handlers always run last
+
+Lifecycle event nodes can access `context.FlowStatus` (`"completed"` or `"failed"`) and `context.FlowError` to inspect the outcome.

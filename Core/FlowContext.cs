@@ -37,6 +37,14 @@ public class FlowContext
     internal Dictionary<string, IEngineCredential> Credentials { get; set; } = new();
     internal FlowConfig Config { get; set; } = new();
 
+    // --- Flow outcome (set by FlowRunner after main nodes complete) ---
+
+    /// <summary>Final status of the flow after main nodes complete: "completed" or "failed".</summary>
+    public string? FlowStatus { get; internal set; }
+
+    /// <summary>Error message if the flow failed; null on success.</summary>
+    public string? FlowError { get; internal set; }
+
     // --- Context data methods ---
 
     /// <summary>Stores a value in the shared context under the given key.</summary>

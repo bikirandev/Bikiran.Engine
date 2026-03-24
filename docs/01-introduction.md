@@ -16,6 +16,7 @@ Think of it as having tools like n8n or Zapier embedded directly inside your .NE
 | **Persistent Logging**      | Every step is recorded in the database with timing, input, output, and error details |
 | **Branching and Loops**     | Use conditions to take different paths, or repeat steps until a goal is met          |
 | **Failure Handling**        | Choose to stop, continue, or retry when a step fails                                 |
+| **Lifecycle Events**        | Run handlers on success, failure, or always after a flow completes                   |
 | **Reusable Definitions**    | Save flow templates as JSON in the database and trigger them without code changes    |
 | **Scheduled Execution**     | Run flows on a cron schedule, at fixed intervals, or at a specific future time       |
 | **Custom Nodes**            | Create your own node types for any business logic                                    |

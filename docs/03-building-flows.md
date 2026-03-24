@@ -27,6 +27,9 @@ var serviceId = await FlowBuilder
 | `.Configure(action)`       | No                 | Sets runtime options like timeout and failure strategy                   |
 | `.WithContext(action)`     | No                 | Injects services (database, HTTP context, logger) into the flow          |
 | `.AddNode(node)`           | Yes (at least one) | Adds a step to the execution sequence                                    |
+| `.OnSuccess(node)`         | No                 | Adds a node that runs only when all main nodes complete successfully     |
+| `.OnFail(node)`            | No                 | Adds a node that runs only when the flow fails (error or timeout)        |
+| `.OnFinish(node)`          | No                 | Adds a node that always runs after success/fail handlers complete        |
 | `.StartAsync()`            | Yes                | Saves the run record, starts background execution, returns the ServiceId |
 | `.StartAndWaitAsync()`     | No                 | Same as `StartAsync()` but waits for the flow to finish before returning |
 
@@ -117,6 +120,70 @@ The `FlowContext` also provides access to:
 
 ---
 
+## Lifecycle Events
+
+Use lifecycle event methods to run nodes after the main flow completes. This is useful for logging, cleanup, alerting, or any post-flow action.
+
+| Method         | Fires When                                       | Use Case                          |
+| -------------- | ------------------------------------------------ | --------------------------------- |
+| `.OnSuccess()` | All main nodes completed without failure          | Success logging, cleanup          |
+| `.OnFail()`    | The flow ended with a failure (error or timeout)  | Alert notifications, rollback     |
+| `.OnFinish()`  | Always, after success/fail handlers have run       | Final cleanup, audit logging      |
+
+```csharp
+var serviceId = await FlowBuilder
+    .Create("provision_domain")
+    .AddNode(new HttpRequestNode("add_dns") { /* ... */ })
+    .AddNode(new WaitNode("propagation_delay") { DelayMs = 15000 })
+    .OnSuccess(new HttpRequestNode("notify_success") {
+        Url = "https://api.example.com/webhook/success",
+        Method = HttpMethod.Post,
+        Body = "{\"status\": \"ok\"}"
+    })
+    .OnFail(new EmailSendNode("alert_admin") {
+        ToEmail = "admin@example.com",
+        Subject = "Domain provisioning failed",
+        HtmlBodyResolver = ctx => $"<p>Error: {ctx.FlowError}</p>"
+    })
+    .OnFinish(new HttpRequestNode("audit_log") {
+        Url = "https://api.example.com/audit",
+        Method = HttpMethod.Post,
+        Body = "{\"event\": \"provision_finished\"}"
+    })
+    .StartAsync();
+```
+
+**Execution order:** Main nodes → OnSuccess _or_ OnFail → OnFinish
+
+You can chain multiple handlers for each event — they run in the order they were added:
+
+```csharp
+.OnSuccess(new LogNode("log_success") { /* ... */ })
+.OnSuccess(new WebhookNode("notify_team") { /* ... */ })
+```
+
+### Accessing Flow Outcome
+
+Lifecycle event nodes can read the flow's outcome through `FlowContext`:
+
+| Property       | Type      | Description                                      |
+| -------------- | --------- | ------------------------------------------------ |
+| `FlowStatus`  | `string?` | `"completed"` or `"failed"` after main nodes run |
+| `FlowError`   | `string?` | Error message if failed; `null` on success        |
+
+```csharp
+public async Task<NodeResult> ExecuteAsync(FlowContext context, CancellationToken ct)
+{
+    var status = context.FlowStatus;  // "completed" or "failed"
+    var error = context.FlowError;    // error message or null
+    // ... your logic
+}
+```
+
+> **Note:** Lifecycle event node failures are logged in the database but do **not** change the flow's final status. If the main nodes succeeded, the flow status remains `"completed"` even if an OnSuccess handler fails.
+
+---
+
 ## Execution Model
 
 ### What Happens When You Call StartAsync()
@@ -145,6 +212,15 @@ Background Execution
   │     └── If the node fails:
   │           ├── Stop     → abort the entire flow
   │           └── Continue → skip and move to next node
+  │
+  ├── Set FlowContext.FlowStatus and FlowContext.FlowError
+  │
+  ├── If all nodes succeeded and OnSuccess handlers exist:
+  │     └── Run OnSuccess nodes sequentially (failures logged only)
+  ├── If the flow failed and OnFail handlers exist:
+  │     └── Run OnFail nodes sequentially (failures logged only)
+  ├── If OnFinish handlers exist:
+  │     └── Run OnFinish nodes sequentially (failures logged only)
   │
   ├── All nodes done → FlowRun status = "completed"
   └── On unhandled error → FlowRun status = "failed"
