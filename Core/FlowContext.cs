@@ -30,8 +30,21 @@ public class FlowContext
     /// <summary>Structured logger available to nodes.</summary>
     public ILogger? Logger { get; set; }
 
-    /// <summary>General-purpose DI service provider.</summary>
+    /// <summary>
+    /// General-purpose DI service provider scoped to the flow's lifetime.
+    /// Automatically set by FlowBuilder — prefer this over request-scoped services.
+    /// </summary>
     public IServiceProvider? Services { get; set; }
+
+    /// <summary>
+    /// Resolves a DbContext (or any class) from the flow-scoped DI container.
+    /// Use this instead of the <see cref="DbContext"/> property in background flows
+    /// to avoid disposed-context errors.
+    /// </summary>
+    public T? GetDbContext<T>() where T : class
+    {
+        return Services?.GetService(typeof(T)) as T;
+    }
 
     // --- Internal state used by FlowRunner ---
     internal Dictionary<string, IEngineCredential> Credentials { get; set; } = new();

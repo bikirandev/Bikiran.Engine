@@ -137,6 +137,13 @@ public class FlowBuilder
         var scope = ServiceProvider?.CreateScope();
         var engineDb = scope?.ServiceProvider.GetService<EngineDbContext>();
 
+        // Expose the DI scope to user nodes so they can resolve services
+        // (e.g., AppDbContext) that outlive the HTTP request.
+        if (scope != null)
+        {
+            context.Services = scope.ServiceProvider;
+        }
+
         if (engineDb != null)
         {
             var contextMeta = ContextMeta.FromHttpContext(context.HttpContext);
