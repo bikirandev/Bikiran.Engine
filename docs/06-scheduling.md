@@ -1,12 +1,12 @@
 # Scheduling
 
-Schedules let you trigger flows automatically at defined times — without manual intervention. Bikiran.Engine uses Quartz.NET to support three schedule types: cron expressions, fixed intervals, and one-time future execution.
+Schedules let you trigger flows automatically at defined times — without any manual intervention. Bikiran.Engine uses Quartz.NET to support three schedule types: cron expressions, fixed intervals, and one-time future execution.
 
 ---
 
 ## When to Use Scheduling
 
-| Use Case                                            | Schedule Type |
+| Scenario                                            | Schedule Type |
 | --------------------------------------------------- | ------------- |
 | Send a daily report email every morning at 8 AM     | Cron          |
 | Ping an external API every 15 minutes               | Interval      |
@@ -16,13 +16,13 @@ Schedules let you trigger flows automatically at defined times — without manua
 
 ## Schedule Types
 
-| Type         | Description                                                   | Example                         |
-| ------------ | ------------------------------------------------------------- | ------------------------------- |
-| **Cron**     | Standard Quartz cron expression (6-field format with seconds) | `"0 0 8 * * ?"` — daily at 8 AM |
-| **Interval** | Repeats every N minutes                                       | Every 15 minutes                |
-| **Once**     | Runs once at a specific Unix timestamp                        | A specific moment in the future |
+| Type         | Description                                                        | Example                         |
+| ------------ | ------------------------------------------------------------------ | ------------------------------- |
+| **Cron**     | Standard Quartz cron expression (6-field format including seconds) | `"0 0 8 * * ?"` — daily at 8 AM |
+| **Interval** | Repeats every N minutes                                            | Every 15 minutes                |
+| **Once**     | Runs once at a specific Unix timestamp                             | A specific moment in the future |
 
-### Common Cron Expressions
+### Useful Cron Expressions
 
 | Expression          | Meaning                        |
 | ------------------- | ------------------------------ |
@@ -43,7 +43,7 @@ Schedules let you trigger flows automatically at defined times — without manua
 
 ---
 
-## Built-in Parameters
+## Automatic Placeholders
 
 Every scheduled flow automatically has access to these placeholders, without the admin needing to define them:
 
@@ -72,15 +72,15 @@ On .NET 6+, IANA timezones work on both Windows and Linux.
 
 ---
 
-## Misfire Handling
+## Handling Missed Triggers
 
-When the application is down during a scheduled trigger time, the engine handles missed fires safely:
+When the application is down during a scheduled trigger time, the engine handles it safely:
 
-| Schedule Type | Strategy          | What Happens                                               |
-| ------------- | ----------------- | ---------------------------------------------------------- |
-| Cron          | Skip missed       | Fires that occurred during downtime are skipped entirely   |
-| Interval      | Continue from now | Resumes from the current time without catching up          |
-| Once          | Fire on restart   | If the app was down at fire time, triggers on next startup |
+| Schedule Type | What Happens                                               |
+| ------------- | ---------------------------------------------------------- |
+| Cron          | Missed triggers are skipped entirely                       |
+| Interval      | Resumes from the current time without catching up          |
+| Once          | If the app was down at fire time, triggers on next startup |
 
 This prevents a flood of backlogged runs after a restart.
 
@@ -115,7 +115,7 @@ app.Lifetime.ApplicationStarted.Register(async () => {
 
 ---
 
-## Scheduler Service Methods
+## Scheduler Methods
 
 | Method                                 | Description                                              |
 | -------------------------------------- | -------------------------------------------------------- |
@@ -191,40 +191,34 @@ await _schedulerService.RegisterScheduleAsync(schedule);
 
 ---
 
-## Request and Response Models
+## Data Models
 
 ### Create or Update a Schedule
 
-```csharp
-public class FlowScheduleSaveRequestDTO
-{
-    public string ScheduleKey { get; set; }
-    public string DisplayName { get; set; }
-    public string DefinitionKey { get; set; }         // Must match an existing FlowDefinition
-    public string ScheduleType { get; set; }          // "cron" / "interval" / "once"
-    public string? CronExpression { get; set; }
-    public int? IntervalMinutes { get; set; }
-    public long? RunOnceAt { get; set; }
-    public Dictionary<string, string> DefaultParameters { get; set; }
-    public string TimeZone { get; set; }
-    public int MaxConcurrent { get; set; }
-}
-```
+| Field               | Type                         | Description                                    |
+| ------------------- | ---------------------------- | ---------------------------------------------- |
+| `ScheduleKey`       | string                       | Unique schedule identifier                     |
+| `DisplayName`       | string                       | Human-readable label                           |
+| `DefinitionKey`     | string                       | Must match an existing FlowDefinition          |
+| `ScheduleType`      | string                       | `"cron"`, `"interval"`, or `"once"`            |
+| `CronExpression`    | string?                      | Quartz cron expression (for cron type)         |
+| `IntervalMinutes`   | int?                         | Repeat interval in minutes (for interval type) |
+| `RunOnceAt`         | long?                        | Unix timestamp for one-time execution          |
+| `DefaultParameters` | Dictionary\<string, string\> | Key-value pairs passed on trigger              |
+| `TimeZone`          | string                       | IANA timezone ID                               |
+| `MaxConcurrent`     | int                          | Maximum concurrent runs (default: 1)           |
 
 ### Schedule Summary Response
 
-```csharp
-public class FlowScheduleSummaryDTO
-{
-    public long Id { get; set; }
-    public string ScheduleKey { get; set; }
-    public string DisplayName { get; set; }
-    public string DefinitionKey { get; set; }
-    public string ScheduleType { get; set; }
-    public bool IsActive { get; set; }
-    public long LastRunAt { get; set; }
-    public string? LastRunStatus { get; set; }
-    public string? LastRunServiceId { get; set; }
-    public long NextRunAt { get; set; }
-}
-```
+| Field              | Type    | Description                     |
+| ------------------ | ------- | ------------------------------- |
+| `Id`               | long    | Primary key                     |
+| `ScheduleKey`      | string  | Unique schedule identifier      |
+| `DisplayName`      | string  | Human-readable label            |
+| `DefinitionKey`    | string  | Linked flow definition          |
+| `ScheduleType`     | string  | Schedule type                   |
+| `IsActive`         | bool    | Whether the schedule is enabled |
+| `LastRunAt`        | long    | Most recent trigger timestamp   |
+| `LastRunStatus`    | string? | Status of the last run          |
+| `LastRunServiceId` | string? | ServiceId of the last run       |
+| `NextRunAt`        | long    | Expected next trigger time      |

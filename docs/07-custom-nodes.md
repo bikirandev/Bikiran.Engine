@@ -25,8 +25,8 @@ Every node — built-in or custom — implements this interface:
 ```csharp
 public interface IFlowNode
 {
-    string Name { get; }        // Unique name within the flow (lowercase_underscore)
-    string NodeType { get; }    // Type label (PascalCase)
+    string Name { get; }        // Unique name within the flow
+    string NodeType { get; }    // Type label
 
     Task<NodeResult> ExecuteAsync(FlowContext context, CancellationToken cancellationToken);
 }
@@ -34,9 +34,9 @@ public interface IFlowNode
 
 ---
 
-## Creating a Custom Node
+## Step-by-Step Guide
 
-### Step 1 — Write the Class
+### 1. Write the Class
 
 ```csharp
 public class InvoicePdfNode : IFlowNode
@@ -51,7 +51,7 @@ public class InvoicePdfNode : IFlowNode
 
     public async Task<NodeResult> ExecuteAsync(FlowContext context, CancellationToken ct)
     {
-        // Read input from configuration or from a previous node
+        // Read input from configuration or from a previous step
         var invoiceId = !string.IsNullOrEmpty(InvoiceId)
             ? InvoiceId
             : context.Get<string>("invoice_id");
@@ -63,7 +63,7 @@ public class InvoicePdfNode : IFlowNode
         var pdfService = context.Services?.GetRequiredService<IPdfService>();
         var pdfUrl = await pdfService!.GenerateAsync(invoiceId, ct);
 
-        // Store the result for downstream nodes
+        // Store the result for downstream steps
         context.Set(OutputKey, pdfUrl);
 
         return NodeResult.Ok(pdfUrl);
@@ -71,7 +71,7 @@ public class InvoicePdfNode : IFlowNode
 }
 ```
 
-### Step 2 — Use It in a Flow
+### 2. Use It in a Flow
 
 Custom nodes are used exactly like built-in nodes:
 
@@ -99,9 +99,9 @@ var serviceId = await FlowBuilder
     .StartAsync();
 ```
 
-### Step 3 — Register for JSON Definitions (Optional)
+### 3. Register for JSON Definitions (Optional)
 
-If you want the node available in database-stored flow definitions:
+If you want the node to be available in database-stored flow definitions:
 
 ```csharp
 builder.Services.AddBikiranEngine(options =>
@@ -158,33 +158,34 @@ var baseUrl = cred.Values["BaseUrl"];
 
 ### Via Database
 
-For background flows (`StartAsync()`), resolve the `DbContext` from the flow-scoped DI container to avoid disposed-context errors:
+For background flows, resolve the database context from the flow-scoped DI container to avoid disposed-context errors:
 
 ```csharp
 var db = context.GetDbContext<AppDbContext>();
-if (db == null) return NodeResult.Fail("AppDbContext not registered in DI");
+if (db == null)
+    return NodeResult.Fail("AppDbContext not registered in DI");
 
 var record = await db.Orders
     .Where(o => o.Id == orderId && o.TimeDeleted == 0)
     .FirstOrDefaultAsync(ct);
 ```
 
-> **Note:** Do not pass `ctx.DbContext = _context` in `.WithContext()` for background flows — that request-scoped instance will be disposed after the HTTP response is sent. See [Resolving DbContext in Nodes](03-building-flows.md#resolving-dbcontext-in-nodes).
+> **Important:** Do not pass a database context through `.WithContext()` for background flows — that request-scoped instance will be disposed after the HTTP response is sent.
 
 ---
 
-## Error Handling Best Practices
+## Error Handling
 
-### Return Failures Instead of Throwing
+### Return Failures Instead of Throwing Exceptions
 
-Use `NodeResult.Fail(message)` for expected errors. The engine catches unhandled exceptions, but explicit failure results produce better log messages.
+Use `NodeResult.Fail(message)` for expected errors. The engine catches unhandled exceptions, but explicit failure results give better log messages.
 
 ```csharp
 // Validate inputs
 if (string.IsNullOrEmpty(invoiceId))
     return NodeResult.Fail("InvoiceId is required");
 
-// Catch expected errors
+// Catch expected errors from external services
 try
 {
     var result = await externalService.CallAsync(ct);
@@ -232,7 +233,7 @@ context.Set("pdf_url", "https://cdn.example.com/invoices/123.pdf");
 context.Set("invoice_data", new { Id = "INV-001", Amount = 150.00 });
 ```
 
-Use descriptive, unique `lowercase_underscore` keys to avoid collisions between nodes.
+Use descriptive, unique `lowercase_underscore` keys to avoid collisions between steps.
 
 ---
 
@@ -250,7 +251,7 @@ When your node runs inside a `ParallelNode`, multiple branches execute at the sa
 
 ## Testing
 
-### Unit Test with Mocked Services
+### Unit Test
 
 ```csharp
 [Fact]
@@ -281,97 +282,9 @@ public async Task InvoicePdfNode_SetsOutputKey_OnSuccess()
     var result = await node.ExecuteAsync(context, CancellationToken.None);
 
     Assert.True(result.Success);
-    Assert.Equal("https://cdn.example.com/invoices/test.pdf", context.Get<string>("pdf_url"));
+    Assert.Equal(
+        "https://cdn.example.com/invoices/test.pdf",
+        context.Get<string>("pdf_url")
+    );
 }
 ```
-
-### Integration Test in a Flow
-
-```csharp
-[Fact]
-public async Task InvoicePdfNode_WorksInFlow()
-{
-    var serviceId = await FlowBuilder
-        .Create("test_invoice_flow")
-        .WithContext(ctx => { ctx.Services = _serviceProvider; })
-        .AddNode(new InvoicePdfNode("generate_pdf") {
-            InvoiceId = "INV-001",
-            OutputKey = "pdf_url"
-        })
-        .StartAndWaitAsync();
-
-    var run = await _context.FlowRun
-        .FirstOrDefaultAsync(r => r.ServiceId == serviceId);
-
-    Assert.Equal("completed", run?.Status);
-}
-```
-
----
-
-## Full Example: Payment Verification Node
-
-```csharp
-public class PaymentVerifyNode : IFlowNode
-{
-    public string Name { get; }
-    public string NodeType => "PaymentVerify";
-
-    public string TransactionId { get; set; } = "";
-    public string CredentialName { get; set; } = "payment_gateway";
-    public string OutputKey { get; set; } = "payment_verified";
-
-    public PaymentVerifyNode(string name) => Name = name;
-
-    public async Task<NodeResult> ExecuteAsync(FlowContext context, CancellationToken ct)
-    {
-        var txnId = !string.IsNullOrEmpty(TransactionId)
-            ? TransactionId
-            : context.Get<string>("transaction_id");
-
-        if (string.IsNullOrEmpty(txnId))
-            return NodeResult.Fail("TransactionId is required");
-
-        var cred = context.GetCredential<GenericCredential>(CredentialName);
-        var apiKey = cred.Values["ApiKey"];
-        var baseUrl = cred.Values["BaseUrl"];
-
-        var httpClient = context.Services?.GetRequiredService<IHttpClientFactory>()
-            .CreateClient();
-
-        var request = new HttpRequestMessage(HttpMethod.Get,
-            $"{baseUrl}/verify?txn_id={Uri.EscapeDataString(txnId)}");
-        request.Headers.Add("Authorization", $"Bearer {apiKey}");
-
-        try
-        {
-            var response = await httpClient!.SendAsync(request, ct);
-            response.EnsureSuccessStatusCode();
-
-            var body = await response.Content.ReadAsStringAsync(ct);
-            context.Set(OutputKey, body);
-            return NodeResult.Ok(body);
-        }
-        catch (HttpRequestException ex)
-        {
-            return NodeResult.Fail($"Payment verification failed: {ex.Message}");
-        }
-    }
-}
-```
-
----
-
-## Pre-Production Checklist
-
-Before using a custom node in production, verify:
-
-- [ ] Implements `IFlowNode` with `Name`, `NodeType`, and `ExecuteAsync`
-- [ ] `NodeType` does not conflict with built-in types (`Wait`, `HttpRequest`, `EmailSend`, etc.)
-- [ ] Uses `NodeResult.Ok()` / `NodeResult.Fail()` instead of throwing exceptions
-- [ ] Passes `CancellationToken` to all async calls
-- [ ] Writes to a unique context key (uses `OutputKey` pattern)
-- [ ] Validates required inputs before doing work
-- [ ] Thread-safe when used in parallel branches
-- [ ] Has at least one unit test
-- [ ] Registered for JSON definitions if needed

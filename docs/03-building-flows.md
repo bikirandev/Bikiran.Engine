@@ -1,17 +1,16 @@
 # Building Flows
 
-Flows are built using the `FlowBuilder` class, which provides a step-by-step method chain for defining what your workflow does
-and how it behaves.
+Flows are built using the `FlowBuilder` class. It provides a step-by-step method chain for defining what your workflow does and how it behaves.
 
 ---
 
-## Builder Overview
+## Quick Overview
 
 ```csharp
 var serviceId = await FlowBuilder
     .Create("flow_name")                               // 1. Name the flow
     .Configure(cfg => { /* runtime settings */ })       // 2. Set timeout, failure handling, etc.
-    .WithContext(ctx => { /* inject services */ })       // 3. Provide database, HTTP context, etc.
+    .WithContext(ctx => { /* provide services */ })      // 3. Provide HTTP context, logger, etc.
     .AddNode(new WaitNode("step_1") { DelayMs = 500 })  // 4. Add steps in order
     .AddNode(new HttpRequestNode("step_2") { /* ... */ })
     .StartAsync();                                      // 5. Start and get the run ID
@@ -21,15 +20,15 @@ var serviceId = await FlowBuilder
 
 ## Builder Methods
 
-| Method                     | Required           | Description                                                              |
+| Method                     | Required           | What It Does                                                             |
 | -------------------------- | ------------------ | ------------------------------------------------------------------------ |
 | `FlowBuilder.Create(name)` | Yes                | Creates a new builder with the given flow name                           |
 | `.Configure(action)`       | No                 | Sets runtime options like timeout and failure strategy                   |
-| `.WithContext(action)`     | No                 | Injects services (database, HTTP context, logger) into the flow          |
+| `.WithContext(action)`     | No                 | Provides services (HTTP context, logger) to the flow                     |
 | `.AddNode(node)`           | Yes (at least one) | Adds a step to the execution sequence                                    |
-| `.OnSuccess(node)`         | No                 | Adds a node that runs only when all main nodes complete successfully     |
-| `.OnFail(node)`            | No                 | Adds a node that runs only when the flow fails (error or timeout)        |
-| `.OnFinish(node)`          | No                 | Adds a node that always runs after success/fail handlers complete        |
+| `.OnSuccess(node)`         | No                 | Adds a step that runs only when all main steps succeed                   |
+| `.OnFail(node)`            | No                 | Adds a step that runs only when the flow fails                           |
+| `.OnFinish(node)`          | No                 | Adds a step that always runs after success/fail handlers                 |
 | `.StartAsync()`            | Yes                | Saves the run record, starts background execution, returns the ServiceId |
 | `.StartAndWaitAsync()`     | No                 | Same as `StartAsync()` but waits for the flow to finish before returning |
 
@@ -48,44 +47,44 @@ Use `.Configure()` to control how the flow behaves at runtime:
 })
 ```
 
-| Setting             | Default    | Description                                                   |
-| ------------------- | ---------- | ------------------------------------------------------------- |
-| `MaxExecutionTime`  | 10 minutes | Maximum time the flow can run before being cancelled          |
-| `OnFailure`         | `Stop`     | What happens when a step fails (see failure strategies below) |
-| `EnableNodeLogging` | `true`     | Whether to write per-step records to the database             |
-| `TriggerSource`     | `""`       | A label showing where the flow was triggered from             |
+| Setting             | Default    | Description                                          |
+| ------------------- | ---------- | ---------------------------------------------------- |
+| `MaxExecutionTime`  | 10 minutes | Maximum time the flow can run before being cancelled |
+| `OnFailure`         | `Stop`     | What happens when a step fails                       |
+| `EnableNodeLogging` | `true`     | Whether to write per-step records to the database    |
+| `TriggerSource`     | `""`       | A label showing where the flow was triggered from    |
 
 ### Failure Strategies
 
-| Strategy     | Behavior                                                                |
-| ------------ | ----------------------------------------------------------------------- |
-| **Stop**     | Cancel the entire flow immediately when a step fails                                   |
-| **Continue** | Skip the failed step and move on to the next one                                       |
+| Strategy     | What Happens                                         |
+| ------------ | ---------------------------------------------------- |
+| **Stop**     | Cancel the entire flow immediately when a step fails |
+| **Continue** | Skip the failed step and move on to the next one     |
 
-For retry behavior, wrap individual nodes with `RetryNode` instead of using a global failure strategy.
+For retry behavior, wrap individual steps with `RetryNode` instead of changing the global failure strategy.
 
 ---
 
-## Injecting Context
+## Providing Context
 
-Use `.WithContext()` to provide services that nodes can access during execution:
+Use `.WithContext()` to give the flow access to services that steps can use during execution:
 
 ```csharp
 .WithContext(ctx => {
-    ctx.HttpContext = HttpContext;      // For capturing caller metadata
+    ctx.HttpContext = HttpContext;      // Captures caller metadata (IP, user ID, etc.)
     ctx.Logger = _logger;              // For structured logging
 })
 ```
 
-When `HttpContext` is provided, the engine automatically captures caller metadata (IP address, user ID, request path, user agent) and saves it with the run record for later debugging.
+When `HttpContext` is provided, the engine automatically saves caller metadata (IP address, user ID, request path, user agent) with the run record.
 
-> **Important — DI Scope:** The engine creates its own long-lived DI scope for each flow run. This scope outlives the HTTP request, so nodes in background flows (`StartAsync()`) can safely resolve services from it. Use `context.GetDbContext<T>()` or `context.Services` inside nodes instead of passing a request-scoped `DbContext` via `.WithContext()`. See [Resolving DbContext in Nodes](#resolving-dbcontext-in-nodes) below.
+> **About Dependency Injection:** The engine creates its own long-lived DI scope for each flow run. This scope outlives the HTTP request, so background flows can safely access services from it. Inside your steps, use `context.GetDbContext<T>()` or `context.Services` instead of passing a request-scoped database context through `.WithContext()`. See [Using the Database in Steps](#using-the-database-in-steps) below.
 
 ---
 
-## Shared Variables (FlowContext)
+## Sharing Data Between Steps
 
-Nodes communicate by reading and writing to a shared in-memory dictionary. This is the primary way data passes from one step to the next.
+Steps communicate through a shared in-memory dictionary. This is the primary way data passes from one step to the next.
 
 **Writing a value:**
 
@@ -108,22 +107,25 @@ if (context.Has("order_total"))
 }
 ```
 
-The `FlowContext` also provides access to:
+The shared context also provides access to:
 
-- `ServiceId` — the unique run identifier
-- `FlowName` — the name of the current flow
-- `HttpContext` — the original HTTP request context
-- `Services` — the flow-scoped DI service provider (set automatically by `FlowBuilder`)
-- `Logger` — a structured logger
-- `GetDbContext<T>()` — resolves a `DbContext` from the flow-scoped DI container (recommended for background flows)
-- `GetCredential<T>(name)` — retrieves a named credential registered at startup
-- `DbContext` — *(legacy)* a manually injected database context; prefer `GetDbContext<T>()` for background flows
+| Property                 | Description                                                                  |
+| ------------------------ | ---------------------------------------------------------------------------- |
+| `ServiceId`              | The unique run identifier                                                    |
+| `FlowName`               | The name of the current flow                                                 |
+| `HttpContext`            | The original HTTP request context                                            |
+| `Services`               | The flow-scoped DI service provider                                          |
+| `Logger`                 | A structured logger                                                          |
+| `GetDbContext<T>()`      | Resolves a database context from the flow-scoped DI container                |
+| `GetCredential<T>(name)` | Retrieves a named credential registered at startup                           |
+| `FlowStatus`             | The final flow status (available in lifecycle event handlers)                |
+| `FlowError`              | The error message if the flow failed (available in lifecycle event handlers) |
 
 ---
 
-## Resolving DbContext in Nodes
+## Using the Database in Steps
 
-When a flow runs in the background via `StartAsync()`, the HTTP request that created the flow finishes immediately — and any request-scoped `DbContext` is disposed. To avoid "Cannot access a disposed context" errors, use `GetDbContext<T>()` inside your nodes:
+When a flow runs in the background via `StartAsync()`, the HTTP request that created the flow finishes immediately — and any request-scoped database context is disposed. To avoid "Cannot access a disposed context" errors, use `GetDbContext<T>()` inside your steps:
 
 ```csharp
 public async Task<NodeResult> ExecuteAsync(FlowContext context, CancellationToken ct)
@@ -137,25 +139,29 @@ public async Task<NodeResult> ExecuteAsync(FlowContext context, CancellationToke
 }
 ```
 
-This resolves `AppDbContext` from the engine's long-lived DI scope (created in `FlowBuilder.PrepareAsync()`), which remains alive for the entire flow execution.
+This resolves your database context from the engine's long-lived DI scope, which remains alive for the entire flow execution.
 
-> **Do not** pass `ctx.DbContext = _context` in `.WithContext()` for background flows — that instance will be disposed when the HTTP request ends.
+> **Important:** Do not pass a database context through `.WithContext()` for background flows. That instance will be disposed when the HTTP request ends.
 
 ---
 
 ## Lifecycle Events
 
-Use lifecycle event methods to run nodes after the main flow completes. This is useful for logging, cleanup, alerting, or any post-flow action.
+Lifecycle events let you run steps after the main flow completes. This is useful for logging, cleanup, alerts, or audit trails.
 
-| Method         | Fires When                                       | Use Case                          |
-| -------------- | ------------------------------------------------ | --------------------------------- |
-| `.OnSuccess()` | All main nodes completed without failure          | Success logging, cleanup          |
-| `.OnFail()`    | The flow ended with a failure (error or timeout)  | Alert notifications, rollback     |
-| `.OnFinish()`  | Always, after success/fail handlers have run       | Final cleanup, audit logging      |
+| Method         | When It Runs                             | Common Use                     |
+| -------------- | ---------------------------------------- | ------------------------------ |
+| `.OnSuccess()` | All main steps completed without failure | Success notifications, cleanup |
+| `.OnFail()`    | The flow ended with a failure            | Alert notifications, rollback  |
+| `.OnFinish()`  | Always, after success/fail handlers      | Final cleanup, audit logging   |
 
-> **Timing:** The flow's final status (`completed` / `failed`), `completedAt`, `durationMs`, and `errorMessage` are all committed to the database **before** any lifecycle event node runs. This means `OnSuccess`, `OnFail`, and `OnFinish` nodes can safely read the persisted status.
->
-> **Isolation:** Lifecycle event nodes are **not** counted in `TotalNodes` or `CompletedNodes`. They do not affect `durationMs`, `completedAt`, or `errorMessage`. Failures in lifecycle nodes are logged but never change the flow's final status.
+### How They Work
+
+- The flow's final status (`completed` or `failed`), completion time, duration, and error message are saved to the database **before** any lifecycle event runs.
+- Lifecycle event steps are **not** counted in `TotalNodes` or `CompletedNodes`. They do not affect the flow's duration or error message.
+- If a lifecycle event step fails, it is logged but does **not** change the flow's final status.
+
+### Example
 
 ```csharp
 var serviceId = await FlowBuilder
@@ -180,72 +186,23 @@ var serviceId = await FlowBuilder
     .StartAsync();
 ```
 
-**Execution order:** Main nodes → Flow status committed to DB → OnSuccess _or_ OnFail → OnFinish
+**Execution order:** Main steps → Status saved to database → OnSuccess _or_ OnFail → OnFinish
 
-You can chain multiple handlers for each event — they run in the order they were added:
+You can add multiple handlers for each event — they run in the order they were added:
 
 ```csharp
-.OnSuccess(new LogNode("log_success") { /* ... */ })
-.OnSuccess(new WebhookNode("notify_team") { /* ... */ })
+.OnSuccess(new HttpRequestNode("log_success") { /* ... */ })
+.OnSuccess(new HttpRequestNode("notify_team") { /* ... */ })
 ```
 
-### Accessing Flow Outcome (OnFinish)
+### Checking the Outcome in OnFinish
 
-Since `OnFinish` runs regardless of outcome, you'll often need to check whether the flow succeeded or failed. Every lifecycle event node can read the outcome through `FlowContext`:
-
-| Property       | Type             | Description                                                   |
-| -------------- | ---------------- | ------------------------------------------------------------- |
-| `FlowStatus`  | `FlowRunStatus?` | `FlowRunStatus.Completed` or `FlowRunStatus.Failed` after run |
-| `FlowError`   | `string?`        | Error message if failed; `null` on success                    |
-
-**Example — OnFinish node that branches on status:**
+Since `OnFinish` runs regardless of the outcome, you can check what happened using `FlowContext`:
 
 ```csharp
-public class FlowAuditNode : IFlowNode
-{
-    public string Name { get; }
-    public string NodeType => "FlowAudit";
-
-    public FlowAuditNode(string name) => Name = name;
-
-    public async Task<NodeResult> ExecuteAsync(FlowContext context, CancellationToken ct)
-    {
-        var isSuccess = context.FlowStatus == FlowRunStatus.Completed;
-        var error = context.FlowError; // null when succeeded
-
-        if (isSuccess)
-        {
-            // Flow succeeded — log or notify
-            context.Set("audit_message", $"Flow '{context.FlowName}' completed successfully.");
-        }
-        else
-        {
-            // Flow failed — include error details
-            context.Set("audit_message", $"Flow '{context.FlowName}' failed: {error}");
-        }
-
-        return NodeResult.Ok();
-    }
-}
-```
-
-**Usage:**
-
-```csharp
-var serviceId = await FlowBuilder
-    .Create("process_order")
-    .AddNode(new HttpRequestNode("charge_payment") { /* ... */ })
-    .AddNode(new EmailSendNode("send_receipt") { /* ... */ })
-    .OnFinish(new FlowAuditNode("audit_result"))
-    .StartAsync();
-```
-
-You can also use built-in nodes with `HtmlBodyResolver` or `Transform` lambdas that check status inline:
-
-```csharp
-.OnFinish(new EmailSendNode("notify_admin") {
+.OnFinish(new EmailSendNode("final_report") {
     ToEmail = "admin@example.com",
-    Subject = "Flow finished",
+    Subject = "Flow Report",
     HtmlBodyResolver = ctx =>
         ctx.FlowStatus == FlowRunStatus.Completed
             ? $"<p>Flow <b>{ctx.FlowName}</b> completed successfully.</p>"
@@ -253,150 +210,27 @@ You can also use built-in nodes with `HtmlBodyResolver` or `Transform` lambdas t
 })
 ```
 
-> **Note:** Lifecycle event node failures are logged in the database but do **not** change the flow's final status. If the main nodes succeeded, the flow status remains `FlowRunStatus.Completed` even if an OnSuccess or OnFinish handler fails.
-
 ---
 
-## Execution Model
+## How Execution Works
 
-### What Happens When You Call StartAsync()
+### When You Call StartAsync()
 
-```
-StartAsync()
-  ├── Generate a unique ServiceId (UUID)
-  ├── Save a FlowRun record to the database (status = pending)
-  ├── Start background execution via Task.Run
-  └── Return the ServiceId immediately
-```
+1. A unique ServiceId (UUID) is generated.
+2. A FlowRun record is saved to the database with status "pending."
+3. Background execution starts via `Task.Run`.
+4. The ServiceId is returned immediately.
 
-### How Steps Run
+### Step-by-Step Execution
 
-```
-Background Execution
-  ├── Update FlowRun status → "running"
-  ├── Start a timeout timer (based on MaxExecutionTime)
-  │
-  ├── For each node in order:
-  │     ├── Save a NodeLog record (status = running)
-  │     ├── Run the node's ExecuteAsync method
-  │     ├── Update NodeLog (status = completed or failed)
-  │     ├── Update FlowRun progress counter
-  │     │
-  │     └── If the node fails:
-  │           ├── Stop     → abort the entire flow
-  │           └── Continue → skip and move to next node
-  │
-  ├── Set FlowContext.FlowStatus and FlowContext.FlowError
-  │
-  ├── Commit FlowRun status to database
-  │     (status, completedAt, durationMs, errorMessage)
-  │
-  ├── If all nodes succeeded and OnSuccess handlers exist:
-  │     └── Run OnSuccess nodes sequentially (failures logged only)
-  ├── If the flow failed and OnFail handlers exist:
-  │     └── Run OnFail nodes sequentially (failures logged only)
-  ├── If OnFinish handlers exist:
-  │     └── Run OnFinish nodes sequentially (failures logged only)
-  │
-  └── Done (status already committed above)
-```
-
-### Timeout Protection
-
-A cancellation timer is set based on `MaxExecutionTime` (default: 10 minutes). If the timer expires, the currently running node receives a cancellation signal, and the flow is marked as `failed` with the message `"max_execution_time_exceeded"`.
-
----
-
-## Progress Tracking
-
-After each step completes, the engine updates `FlowRun.CompletedNodes`. You can calculate progress as:
-
-```
-Progress = (CompletedNodes / TotalNodes) × 100
-```
-
-This is available in real time through the admin API's progress endpoint.
-
----
-
-## Run Statuses
-
-### Flow Run Statuses
-
-| Status      | Meaning                            |
-| ----------- | ---------------------------------- |
-| `Pending`   | Created but not yet started        |
-| `Running`   | Currently executing steps          |
-| `Completed` | All steps finished successfully    |
-| `Failed`    | Stopped due to an error or timeout |
-| `Cancelled` | Cancelled externally               |
-
-### Node Log Statuses
-
-| Status      | Meaning                                           |
-| ----------- | ------------------------------------------------- |
-| `Pending`   | Queued but not yet executed                       |
-| `Running`   | Currently executing                               |
-| `Completed` | Finished successfully                             |
-| `Failed`    | Finished with an error                            |
-| `Skipped`   | Skipped (e.g., when failure strategy is Continue) |
-
----
-
-## Context Metadata
-
-When `HttpContext` is provided, the engine automatically saves a snapshot of the caller's information:
-
-```json
-{
-  "IpAddress": "192.168.1.1",
-  "UserId": 12345,
-  "RequestPath": "/api/v3/orders",
-  "UserAgent": "Mozilla/5.0 ...",
-  "Timestamp": 1742000000
-}
-```
-
-This is stored in the `FlowRun.ContextMeta` field and is visible through the admin API.
-
----
-
-## Complete Example
-
-```csharp
-var serviceId = await FlowBuilder
-    .Create("order_notification_flow")
-    .Configure(cfg => {
-        cfg.MaxExecutionTime = TimeSpan.FromMinutes(5);
-        cfg.OnFailure = OnFailureAction.Stop;
-        cfg.TriggerSource = nameof(OrdersV3Controller);
-    })
-    .WithContext(ctx => {
-        ctx.DbContext = _context;
-        ctx.HttpContext = HttpContext;
-        ctx.Logger = _logger;
-    })
-    .AddNode(new HttpRequestNode("fetch_order") {
-        Url = "https://api.example.com/order/1",
-        Method = HttpMethod.Get,
-        MaxRetries = 3,
-        OutputKey = "order_data"
-    })
-    .AddNode(new IfElseNode("check_order_status") {
-        Condition = ctx => ctx.Get<string>("order_data") != null,
-        TrueBranch = [
-            new EmailSendNode("notify_customer") {
-                ToEmail = "user@example.com",
-                Subject = "Order Ready",
-                Template = "ORDER_NOTIFY"
-            }
-        ],
-        FalseBranch = [
-            new WaitNode("wait_before_retry") { DelayMs = 3000 }
-        ]
-    })
-    .AddNode(new WaitNode("final_wait") { DelayMs = 500 })
-    .StartAsync();
-```
-
-This flow fetches order data via HTTP, checks whether the data was received, sends an email if it was (or waits if not), then pauses briefly before finishing. The entire flow runs in the background, and the `serviceId` is returned immediately.
+1. The FlowRun status is updated to "running."
+2. A timeout timer starts based on `MaxExecutionTime`.
+3. Each step runs in order:
+   - A NodeLog record is created (status = running).
+   - The step's `ExecuteAsync` method runs.
+   - The NodeLog is updated (status = completed or failed).
+   - The progress counter increments.
+   - If a step fails: **Stop** aborts the flow, **Continue** skips to the next step.
+4. The flow's status and error (if any) are saved to the context.
+5. The final status is committed to the database.
+6. Lifecycle event handlers execute (OnSuccess or OnFail, then OnFinish).

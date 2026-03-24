@@ -1,10 +1,10 @@
 # Examples
 
-This document provides practical, ready-to-use code examples for common workflow patterns.
+Practical, ready-to-use code examples for common workflow patterns.
 
 ---
 
-## Simple HTTP Request and Email
+## HTTP Request and Email Notification
 
 Fetch data from an API and send a notification email:
 
@@ -39,7 +39,7 @@ var serviceId = await FlowBuilder
 
 ## Database Lookup with Conditional Branching
 
-Load a record from the database and do different things based on whether it exists:
+Load a record from the database and take different paths based on whether it exists:
 
 ```csharp
 var serviceId = await FlowBuilder
@@ -104,7 +104,7 @@ var serviceId = await FlowBuilder
 
 ## Retry with Exponential Backoff
 
-Wrap an unreliable HTTP call with automatic retries and exponential backoff:
+Wrap an unreliable HTTP call with automatic retries and increasing delays:
 
 ```csharp
 .AddNode(new RetryNode("retry_payment_verify") {
@@ -252,48 +252,7 @@ await _schedulerService.RegisterScheduleAsync(schedule);
 
 ---
 
-## End-to-End Test Flow
-
-A complete flow for testing that the engine works correctly in your application:
-
-```csharp
-[HttpGet("test-flow")]
-public async Task<ActionResult> TestFlow()
-{
-    var serviceId = await FlowBuilder
-        .Create("test_flow")
-        .Configure(c => {
-            c.MaxExecutionTime = TimeSpan.FromSeconds(30);
-            c.TriggerSource = "TestController";
-        })
-        .WithContext(ctx => {
-            ctx.HttpContext = HttpContext;
-        })
-        .AddNode(new WaitNode("initial_wait") { DelayMs = 500 })
-        .AddNode(new HttpRequestNode("check_api") {
-            Url = "https://httpbin.org/get",
-            Method = HttpMethod.Get,
-            MaxRetries = 2,
-            OutputKey = "api_response"
-        })
-        .AddNode(new TransformNode("extract_data") {
-            Transform = ctx => {
-                var raw = ctx.Get<string>("api_response");
-                return $"Response length: {raw?.Length ?? 0}";
-            },
-            OutputKey = "summary"
-        })
-        .StartAsync();
-
-    return Ok(new { serviceId });
-}
-```
-
-After running this endpoint, check the admin API at `/api/bikiran-engine/runs/{serviceId}` to see the full execution details.
-
----
-
-## Lifecycle Events (OnSuccess / OnFail / OnFinish)
+## Lifecycle Events (OnSuccess, OnFail, OnFinish)
 
 Attach handlers that run after the main flow completes — useful for logging, alerts, and cleanup:
 
@@ -342,34 +301,13 @@ var serviceId = await FlowBuilder
 
 **Execution order:**
 
-1. Main nodes run in sequence (add_dns_record → wait_for_dns → verify_dns)
-2. Flow status, `completedAt`, `durationMs`, and `errorMessage` are committed to the database
+1. Main steps run in sequence
+2. Flow status is saved to the database
 3. If all succeeded → `OnSuccess` handlers run
 4. If any failed → `OnFail` handlers run instead
 5. `OnFinish` handlers always run last
 
-> **Note:** Lifecycle event nodes (`OnSuccess`, `OnFail`, `OnFinish`) are **not** counted in `TotalNodes` or `CompletedNodes` and do not affect `durationMs`, `completedAt`, or `errorMessage`.
-
-### Checking Success or Failure in OnFinish
-
-Inside an `OnFinish` handler, use `context.FlowStatus` and `context.FlowError` to determine the outcome:
-
-```csharp
-.OnFinish(new TransformNode("final_audit") {
-    Transform = ctx =>
-    {
-        var status = ctx.FlowStatus;  // FlowRunStatus.Completed or FlowRunStatus.Failed
-        var error = ctx.FlowError;    // error message or null
-
-        return status == FlowRunStatus.Completed
-            ? $"Domain flow succeeded"
-            : $"Domain flow failed: {error}";
-    },
-    OutputKey = "audit_summary"
-})
-```
-
-Or with an email that adapts its content:
+### Checking the Outcome in OnFinish
 
 ```csharp
 .OnFinish(new EmailSendNode("final_report") {
@@ -381,3 +319,44 @@ Or with an email that adapts its content:
             : $"<p>Flow <b>{ctx.FlowName}</b> failed: {ctx.FlowError}</p>"
 })
 ```
+
+---
+
+## End-to-End Test Flow
+
+A complete flow for verifying the engine works correctly in your application:
+
+```csharp
+[HttpGet("test-flow")]
+public async Task<ActionResult> TestFlow()
+{
+    var serviceId = await FlowBuilder
+        .Create("test_flow")
+        .Configure(c => {
+            c.MaxExecutionTime = TimeSpan.FromSeconds(30);
+            c.TriggerSource = "TestController";
+        })
+        .WithContext(ctx => {
+            ctx.HttpContext = HttpContext;
+        })
+        .AddNode(new WaitNode("initial_wait") { DelayMs = 500 })
+        .AddNode(new HttpRequestNode("check_api") {
+            Url = "https://httpbin.org/get",
+            Method = HttpMethod.Get,
+            MaxRetries = 2,
+            OutputKey = "api_response"
+        })
+        .AddNode(new TransformNode("extract_data") {
+            Transform = ctx => {
+                var raw = ctx.Get<string>("api_response");
+                return $"Response length: {raw?.Length ?? 0}";
+            },
+            OutputKey = "summary"
+        })
+        .StartAsync();
+
+    return Ok(new { serviceId });
+}
+```
+
+After running this endpoint, check the admin API at `/api/bikiran-engine/runs/{serviceId}` to see the full execution details.

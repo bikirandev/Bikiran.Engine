@@ -12,20 +12,20 @@ Install the NuGet package:
 dotnet add package Bikiran.Engine
 ```
 
-### Package Contents
-
 The single package includes everything you need:
 
 - Builder API and execution engine
 - All 9 built-in node types
-- Database persistence and auto-migration
-- Flow definitions and scheduling (via Quartz.NET)
+- Database persistence and automatic migration
+- Flow definitions and scheduling (powered by Quartz.NET)
 - Admin API endpoints
-- Named credential system
+- Credential management
 
-### Dependencies
+### Required Dependencies
 
-| Dependency                                  | Purpose                  |
+These are pulled in automatically with the package:
+
+| Package                                     | Purpose                  |
 | ------------------------------------------- | ------------------------ |
 | `Microsoft.EntityFrameworkCore`             | Database persistence     |
 | `Microsoft.Extensions.DependencyInjection`  | Service registration     |
@@ -39,7 +39,7 @@ The single package includes everything you need:
 
 ### Step 1 — Register Services
 
-In your `Program.cs`, call `AddBikiranEngine()` with your database connection string:
+In your `Program.cs`, call `AddBikiranEngine()` and provide your database connection string:
 
 ```csharp
 builder.Services.AddBikiranEngine(options =>
@@ -54,7 +54,7 @@ builder.Services.AddBikiranEngine(options =>
 app.MapBikiranEngineEndpoints();
 ```
 
-That's it. On the first startup, the engine automatically creates all required database tables. When you update the NuGet package, schema changes are applied automatically — no manual migrations needed.
+That's all you need. On the first startup, the engine automatically creates all required database tables. When you update the NuGet package, schema changes are applied automatically — no manual migrations.
 
 ---
 
@@ -76,13 +76,13 @@ var serviceId = await FlowBuilder
 // Use it to track the run through the admin API
 ```
 
-This flow runs in the background. The `serviceId` is returned immediately so your code can continue without waiting.
+This flow runs in the background. The `serviceId` is returned immediately, so your code can continue without waiting.
 
 ---
 
-## Full Setup with Credentials
+## Adding Credentials
 
-For flows that send emails or call external APIs with secrets, register named credentials at startup:
+Flows that send emails or call external APIs with secrets need registered credentials. Set these up at startup:
 
 ```csharp
 builder.Services.AddBikiranEngine(options =>
@@ -115,12 +115,14 @@ builder.Services.AddBikiranEngine(options =>
 app.MapBikiranEngineEndpoints();
 ```
 
-### Credential Types
+### Available Credential Types
 
 | Type                | Properties                                                                | Used By                            |
 | ------------------- | ------------------------------------------------------------------------- | ---------------------------------- |
 | `SmtpCredential`    | `Host`, `Port`, `Username`, `Password`, `UseSsl`, `FromEmail`, `FromName` | EmailSendNode                      |
-| `GenericCredential` | `Values` (key-value dictionary)                                           | Custom nodes, any external service |
+| `GenericCredential` | `Values` (a key-value dictionary)                                         | Custom nodes, any external service |
+
+### Using Credentials in Nodes
 
 Credentials are accessed by name inside nodes:
 
@@ -145,16 +147,16 @@ var apiKey = cred.Values["ApiKey"];
 When your application starts with `AddBikiranEngine()` configured:
 
 1. **Database tables are created** — `FlowRun`, `FlowNodeLog`, `FlowDefinition`, `FlowDefinitionRun`, `FlowSchedule`, and `FlowSchemaVersion` tables are set up automatically.
-2. **Auto-migration runs** — if you update the NuGet package, the engine detects version differences and applies incremental schema changes.
+2. **Auto-migration runs** — if you update the NuGet package, the engine detects version differences and applies schema changes.
 3. **Quartz.NET starts** — the scheduler loads all active schedules and begins monitoring trigger times.
 4. **Admin API is mapped** — all management endpoints become available under `/api/bikiran-engine/*`.
 
-Your application's own `DbContext` and migrations are never touched. The engine manages its own tables through a separate internal `EngineDbContext`.
+Your application's own database context and migrations are never touched. The engine manages its own tables through a separate internal context.
 
 ---
 
 ## Next Steps
 
 - [Building Flows](03-building-flows.md) — Learn the full FlowBuilder API
-- [Built-in Nodes](04-built-in-nodes.md) — See all available node types
+- [Node Reference](04-node-reference.md) — See all available step types
 - [Examples](10-examples.md) — Ready-to-use code patterns
