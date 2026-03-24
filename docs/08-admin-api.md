@@ -303,7 +303,11 @@ Get the latest version of a specific definition.
 **Response (404):**
 
 ```json
-{ "error": true, "code": "DEFINITION_NOT_FOUND", "message": "Definition not found" }
+{
+  "error": true,
+  "code": "DEFINITION_NOT_FOUND",
+  "message": "Definition not found"
+}
 ```
 
 ### GET /definitions/{key}/versions
@@ -385,15 +389,15 @@ Update a definition. This creates a **new version** rather than modifying the ex
 
 **Optional Headers:**
 
-| Header     | Description                                                       |
-| ---------- | ----------------------------------------------------------------- |
+| Header     | Description                                                      |
+| ---------- | ---------------------------------------------------------------- |
 | `If-Match` | Expected current version (e.g., `"3"`). Returns 409 on mismatch. |
 
 **Response Headers:**
 
-| Header | Description                               |
-| ------ | ----------------------------------------- |
-| `ETag` | The new version number (e.g., `"2"`)      |
+| Header | Description                          |
+| ------ | ------------------------------------ |
+| `ETag` | The new version number (e.g., `"2"`) |
 
 **Response (200):**
 
@@ -442,7 +446,11 @@ Soft-delete all versions of a definition. Sets `TimeDeleted` to the current Unix
 **Response (404):**
 
 ```json
-{ "error": true, "code": "DEFINITION_NOT_FOUND", "message": "Definition not found" }
+{
+  "error": true,
+  "code": "DEFINITION_NOT_FOUND",
+  "message": "Definition not found"
+}
 ```
 
 ### POST /definitions/{key}/trigger
@@ -485,7 +493,11 @@ Trigger execution of a definition with runtime parameters. Uses the latest activ
 **Response (400):**
 
 ```json
-{ "error": true, "code": "TRIGGER_FAILED", "message": "Definition is inactive or not found" }
+{
+  "error": true,
+  "code": "TRIGGER_FAILED",
+  "message": "Definition is inactive or not found"
+}
 ```
 
 ### POST /definitions/{key}/dry-run
@@ -510,7 +522,11 @@ Validate and parse a definition with parameters without executing. Useful for te
 **Response (400):**
 
 ```json
-{ "error": true, "code": "TRIGGER_FAILED", "message": "Definition is inactive or not found" }
+{
+  "error": true,
+  "code": "TRIGGER_FAILED",
+  "message": "Definition is inactive or not found"
+}
 ```
 
 ### GET /definitions/{key}/runs
@@ -574,13 +590,20 @@ Activate a specific version and deactivate all other versions.
 **Response (200):**
 
 ```json
-{ "error": false, "message": "Version 2 is now the active version for 'welcome_email_flow'" }
+{
+  "error": false,
+  "message": "Version 2 is now the active version for 'welcome_email_flow'"
+}
 ```
 
 **Response (404):**
 
 ```json
-{ "error": true, "code": "VERSION_NOT_FOUND", "message": "Version 3 not found for 'welcome_email_flow'" }
+{
+  "error": true,
+  "code": "VERSION_NOT_FOUND",
+  "message": "Version 3 not found for 'welcome_email_flow'"
+}
 ```
 
 ### GET /definitions/{key}/versions/diff?v1=&v2=
@@ -589,10 +612,10 @@ Compare two versions of a definition side-by-side.
 
 **Query Parameters:**
 
-| Parameter | Type | Required | Description            |
-| --------- | ---- | -------- | ---------------------- |
-| `v1`      | int  | Yes      | First version number   |
-| `v2`      | int  | Yes      | Second version number  |
+| Parameter | Type | Required | Description           |
+| --------- | ---- | -------- | --------------------- |
+| `v1`      | int  | Yes      | First version number  |
+| `v2`      | int  | Yes      | Second version number |
 
 **Response (200):**
 
@@ -624,7 +647,11 @@ Compare two versions of a definition side-by-side.
 **Response (404):**
 
 ```json
-{ "error": true, "code": "VERSION_NOT_FOUND", "message": "One or both versions not found" }
+{
+  "error": true,
+  "code": "VERSION_NOT_FOUND",
+  "message": "One or both versions not found"
+}
 ```
 
 ### GET /definitions/{key}/export
@@ -653,7 +680,11 @@ Export a single definition (latest version) as a portable JSON document.
 **Response (404):**
 
 ```json
-{ "error": true, "code": "DEFINITION_NOT_FOUND", "message": "Definition not found" }
+{
+  "error": true,
+  "code": "DEFINITION_NOT_FOUND",
+  "message": "Definition not found"
+}
 ```
 
 ### GET /definitions/export-all
@@ -717,7 +748,11 @@ Import a definition from an exported JSON document. If the definition key alread
 **Response (400 — missing key):**
 
 ```json
-{ "error": true, "code": "KEY_REQUIRED", "message": "DefinitionKey is required" }
+{
+  "error": true,
+  "code": "KEY_REQUIRED",
+  "message": "DefinitionKey is required"
+}
 ```
 
 **Response (400 — invalid flow):**
@@ -738,7 +773,9 @@ Extract all `{{placeholder}}` parameter names from a FlowJson string. Returns a 
 **Request Body:**
 
 ```json
-{ "flowJson": "{\"name\": \"test\", \"nodes\": [{\"type\": \"HttpRequest\", \"name\": \"call\", \"params\": {\"url\": \"https://api.example.com/{{endpoint}}\", \"headers\": {\"Authorization\": \"Bearer {{api_token}}\"}}}]}" }
+{
+  "flowJson": "{\"name\": \"test\", \"nodes\": [{\"type\": \"HttpRequest\", \"name\": \"call\", \"params\": {\"url\": \"https://api.example.com/{{endpoint}}\", \"headers\": {\"Authorization\": \"Bearer {{api_token}}\"}}}]}"
+}
 ```
 
 **Response (200):**
@@ -986,18 +1023,18 @@ List all runs triggered by this schedule, paginated. Matches runs where `trigger
 
 The API uses specific error codes in failure responses for programmatic handling:
 
-| Code                     | HTTP Status | Meaning                                                    |
-| ------------------------ | ----------- | ---------------------------------------------------------- |
-| `DEFINITION_NOT_FOUND`   | 404         | The requested definition key does not exist                |
-| `DEFINITION_INACTIVE`    | 400         | The definition is disabled and cannot be triggered         |
-| `INVALID_FLOW_JSON`      | 400         | The FlowJson failed validation                             |
-| `VERSION_CONFLICT`       | 409         | Another update occurred since you last read the definition |
-| `VERSION_NOT_FOUND`      | 404         | The requested version does not exist                       |
-| `VALIDATION_RESULT`      | 200/400     | Result of a FlowJson validation check                      |
-| `KEY_REQUIRED`           | 400         | The `definitionKey` field is required but was empty         |
-| `PARAMETER_REQUIRED`     | 400         | A required parameter was not supplied                      |
-| `PARAMETER_TYPE_MISMATCH`| 400         | A parameter value does not match the expected type         |
-| `TRIGGER_FAILED`         | 400         | Flow execution could not be started                        |
-| `IMPORT_FAILED`          | 400         | The imported definition failed validation                  |
-| `RUN_NOT_FOUND`          | 404         | The requested flow run does not exist                      |
-| `SCHEDULE_NOT_FOUND`     | 404         | The requested schedule does not exist                      |
+| Code                      | HTTP Status | Meaning                                                    |
+| ------------------------- | ----------- | ---------------------------------------------------------- |
+| `DEFINITION_NOT_FOUND`    | 404         | The requested definition key does not exist                |
+| `DEFINITION_INACTIVE`     | 400         | The definition is disabled and cannot be triggered         |
+| `INVALID_FLOW_JSON`       | 400         | The FlowJson failed validation                             |
+| `VERSION_CONFLICT`        | 409         | Another update occurred since you last read the definition |
+| `VERSION_NOT_FOUND`       | 404         | The requested version does not exist                       |
+| `VALIDATION_RESULT`       | 200/400     | Result of a FlowJson validation check                      |
+| `KEY_REQUIRED`            | 400         | The `definitionKey` field is required but was empty        |
+| `PARAMETER_REQUIRED`      | 400         | A required parameter was not supplied                      |
+| `PARAMETER_TYPE_MISMATCH` | 400         | A parameter value does not match the expected type         |
+| `TRIGGER_FAILED`          | 400         | Flow execution could not be started                        |
+| `IMPORT_FAILED`           | 400         | The imported definition failed validation                  |
+| `RUN_NOT_FOUND`           | 404         | The requested flow run does not exist                      |
+| `SCHEDULE_NOT_FOUND`      | 404         | The requested schedule does not exist                      |

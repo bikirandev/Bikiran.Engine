@@ -6,17 +6,17 @@ Nodes are the building blocks of every flow. Each node performs one task — mak
 
 ## At a Glance
 
-| Node | Type Label | What It Does |
-|---|---|---|
-| [WaitNode](#waitnode) | `Wait` | Pause execution for a set duration |
-| [HttpRequestNode](#httprequestnode) | `HttpRequest` | Make an outbound HTTP call |
-| [EmailSendNode](#emailsendnode) | `EmailSend` | Send an email via SMTP |
-| [IfElseNode](#ifelsenode) | `IfElse` | Take different paths based on a condition |
-| [WhileLoopNode](#whileloopnode) | `WhileLoop` | Repeat steps while a condition is true |
-| [DatabaseQueryNode](#databasequerynode) | `DatabaseQuery` | Run a database query and store the result |
-| [TransformNode](#transformnode) | `Transform` | Reshape or derive values from existing data |
-| [RetryNode](#retrynode) | `Retry` | Wrap any node with retry logic |
-| [ParallelNode](#parallelnode) | `Parallel` | Run multiple branches at the same time |
+| Node                                    | Type Label      | What It Does                                |
+| --------------------------------------- | --------------- | ------------------------------------------- |
+| [WaitNode](#waitnode)                   | `Wait`          | Pause execution for a set duration          |
+| [HttpRequestNode](#httprequestnode)     | `HttpRequest`   | Make an outbound HTTP call                  |
+| [EmailSendNode](#emailsendnode)         | `EmailSend`     | Send an email via SMTP                      |
+| [IfElseNode](#ifelsenode)               | `IfElse`        | Take different paths based on a condition   |
+| [WhileLoopNode](#whileloopnode)         | `WhileLoop`     | Repeat steps while a condition is true      |
+| [DatabaseQueryNode](#databasequerynode) | `DatabaseQuery` | Run a database query and store the result   |
+| [TransformNode](#transformnode)         | `Transform`     | Reshape or derive values from existing data |
+| [RetryNode](#retrynode)                 | `Retry`         | Wrap any node with retry logic              |
+| [ParallelNode](#parallelnode)           | `Parallel`      | Run multiple branches at the same time      |
 
 ---
 
@@ -26,10 +26,10 @@ Pauses the flow for a specified number of milliseconds.
 
 **Properties:**
 
-| Property | Type | Default | Description |
-|---|---|---|---|
-| `Name` | string | required | Step name |
-| `DelayMs` | int | `1000` | Milliseconds to wait |
+| Property  | Type   | Default  | Description          |
+| --------- | ------ | -------- | -------------------- |
+| `Name`    | string | required | Step name            |
+| `DelayMs` | int    | `1000`   | Milliseconds to wait |
 
 **Example:**
 
@@ -45,19 +45,19 @@ Makes an outbound HTTP request with built-in retry support.
 
 **Properties:**
 
-| Property | Type | Default | Description |
-|---|---|---|---|
-| `Name` | string | required | Step name |
-| `Url` | string | required | Target URL |
-| `Method` | HttpMethod | `GET` | HTTP method |
-| `Headers` | Dictionary\<string, string\> | empty | Extra request headers |
-| `Body` | string? | null | Request body (JSON string) |
-| `TimeoutSeconds` | int | `30` | Timeout per attempt |
-| `MaxRetries` | int | `3` | Number of retry attempts |
-| `RetryDelaySeconds` | int | `2` | Seconds between retries |
-| `OutputKey` | string | `"{Name}_response"` | Context key where the response is stored |
-| `ExpectStatusCode` | int? | null | If set, non-matching status codes cause failure |
-| `ExpectValue` | string? | null | JSON validation expression on the response |
+| Property            | Type                         | Default             | Description                                     |
+| ------------------- | ---------------------------- | ------------------- | ----------------------------------------------- |
+| `Name`              | string                       | required            | Step name                                       |
+| `Url`               | string                       | required            | Target URL                                      |
+| `Method`            | HttpMethod                   | `GET`               | HTTP method                                     |
+| `Headers`           | Dictionary\<string, string\> | empty               | Extra request headers                           |
+| `Body`              | string?                      | null                | Request body (JSON string)                      |
+| `TimeoutSeconds`    | int                          | `30`                | Timeout per attempt                             |
+| `MaxRetries`        | int                          | `3`                 | Number of retry attempts                        |
+| `RetryDelaySeconds` | int                          | `2`                 | Seconds between retries                         |
+| `OutputKey`         | string                       | `"{Name}_response"` | Context key where the response is stored        |
+| `ExpectStatusCode`  | int?                         | null                | If set, non-matching status codes cause failure |
+| `ExpectValue`       | string?                      | null                | JSON validation expression on the response      |
 
 **How it works:**
 
@@ -109,20 +109,20 @@ Sends an email using a registered SMTP credential or the application's email ser
 
 **Properties:**
 
-| Property | Type | Default | Description |
-|---|---|---|---|
-| `Name` | string | required | Step name |
-| `ToEmail` | string | required | Recipient email address |
-| `ToName` | string | `""` | Recipient display name |
-| `Subject` | string | required | Email subject |
-| `CredentialName` | string? | null | Named SMTP credential (registered at startup) |
-| `Template` | string? | null | Template key (e.g., `"ORDER_CREATE"`) |
-| `HtmlBody` | string? | null | Raw HTML body |
-| `TextBody` | string? | null | Plain text body |
-| `HtmlBodyResolver` | Func\<FlowContext, string\>? | null | Build HTML body dynamically from context |
-| `TextBodyResolver` | Func\<FlowContext, string\>? | null | Build text body dynamically from context |
-| `Placeholders` | Dictionary\<string, string\> | empty | Template placeholders |
-| `PlaceholderResolver` | Func\<FlowContext, Dictionary\<string, string\>\>? | null | Build placeholders dynamically |
+| Property              | Type                                               | Default  | Description                                   |
+| --------------------- | -------------------------------------------------- | -------- | --------------------------------------------- |
+| `Name`                | string                                             | required | Step name                                     |
+| `ToEmail`             | string                                             | required | Recipient email address                       |
+| `ToName`              | string                                             | `""`     | Recipient display name                        |
+| `Subject`             | string                                             | required | Email subject                                 |
+| `CredentialName`      | string?                                            | null     | Named SMTP credential (registered at startup) |
+| `Template`            | string?                                            | null     | Template key (e.g., `"ORDER_CREATE"`)         |
+| `HtmlBody`            | string?                                            | null     | Raw HTML body                                 |
+| `TextBody`            | string?                                            | null     | Plain text body                               |
+| `HtmlBodyResolver`    | Func\<FlowContext, string\>?                       | null     | Build HTML body dynamically from context      |
+| `TextBodyResolver`    | Func\<FlowContext, string\>?                       | null     | Build text body dynamically from context      |
+| `Placeholders`        | Dictionary\<string, string\>                       | empty    | Template placeholders                         |
+| `PlaceholderResolver` | Func\<FlowContext, Dictionary\<string, string\>\>? | null     | Build placeholders dynamically                |
 
 ### How the Body Is Chosen
 
@@ -171,12 +171,12 @@ Evaluates a condition and runs one of two branches.
 
 **Properties:**
 
-| Property | Type | Description |
-|---|---|---|
-| `Name` | string | Step name |
-| `Condition` | Func\<FlowContext, bool\> | The condition to evaluate |
-| `TrueBranch` | List\<IFlowNode\> | Steps to run if the condition is true |
-| `FalseBranch` | List\<IFlowNode\> | Steps to run if the condition is false |
+| Property      | Type                      | Description                            |
+| ------------- | ------------------------- | -------------------------------------- |
+| `Name`        | string                    | Step name                              |
+| `Condition`   | Func\<FlowContext, bool\> | The condition to evaluate              |
+| `TrueBranch`  | List\<IFlowNode\>         | Steps to run if the condition is true  |
+| `FalseBranch` | List\<IFlowNode\>         | Steps to run if the condition is false |
 
 **How it works:**
 
@@ -207,13 +207,13 @@ Repeats a set of steps while a condition remains true.
 
 **Properties:**
 
-| Property | Type | Default | Description |
-|---|---|---|---|
-| `Name` | string | required | Step name |
-| `Condition` | Func\<FlowContext, bool\> | required | Continue while this returns true |
-| `Body` | List\<IFlowNode\> | required | Steps to run each iteration |
-| `MaxIterations` | int | `10` | Hard cap to prevent infinite loops |
-| `IterationDelayMs` | int | `0` | Milliseconds to wait between iterations |
+| Property           | Type                      | Default  | Description                             |
+| ------------------ | ------------------------- | -------- | --------------------------------------- |
+| `Name`             | string                    | required | Step name                               |
+| `Condition`        | Func\<FlowContext, bool\> | required | Continue while this returns true        |
+| `Body`             | List\<IFlowNode\>         | required | Steps to run each iteration             |
+| `MaxIterations`    | int                       | `10`     | Hard cap to prevent infinite loops      |
+| `IterationDelayMs` | int                       | `0`      | Milliseconds to wait between iterations |
 
 **How it works:**
 
@@ -246,13 +246,13 @@ Runs an EF Core query against your application's database and stores the result 
 
 **Properties:**
 
-| Property | Type | Default | Description |
-|---|---|---|---|
-| `Name` | string | required | Step name |
-| `Query` | Func\<TContext, CancellationToken, Task\<object?\>\> | required | The EF Core query to run |
-| `OutputKey` | string | `"{Name}_result"` | Context key for the result |
-| `FailIfNull` | bool | `false` | Return failure if the query returns null |
-| `NullErrorMessage` | string | `"Query returned null"` | Error message when failing on null |
+| Property           | Type                                                 | Default                 | Description                              |
+| ------------------ | ---------------------------------------------------- | ----------------------- | ---------------------------------------- |
+| `Name`             | string                                               | required                | Step name                                |
+| `Query`            | Func\<TContext, CancellationToken, Task\<object?\>\> | required                | The EF Core query to run                 |
+| `OutputKey`        | string                                               | `"{Name}_result"`       | Context key for the result               |
+| `FailIfNull`       | bool                                                 | `false`                 | Return failure if the query returns null |
+| `NullErrorMessage` | string                                               | `"Query returned null"` | Error message when failing on null       |
 
 **How it resolves the database context:** The node first checks `FlowContext.DbContext`. If that is not set or is not the right type, it falls back to resolving the context from the flow-scoped DI container via `GetDbContext<TContext>()`. For background flows, the DI fallback is recommended.
 
@@ -279,13 +279,13 @@ Reshapes or derives new values from existing context data. Does not make any ext
 
 **Properties:**
 
-| Property | Type | Default | Description |
-|---|---|---|---|
-| `Name` | string | required | Step name |
-| `Transform` | Func\<FlowContext, object?\>? | null | Synchronous transform function |
-| `TransformAsync` | Func\<FlowContext, CancellationToken, Task\<object?\>\>? | null | Asynchronous transform function |
-| `OutputKey` | string | `"{Name}_output"` | Context key for the result |
-| `SkipIfNullOutput` | bool | `true` | Skip storing the key if the result is null |
+| Property           | Type                                                     | Default           | Description                                |
+| ------------------ | -------------------------------------------------------- | ----------------- | ------------------------------------------ |
+| `Name`             | string                                                   | required          | Step name                                  |
+| `Transform`        | Func\<FlowContext, object?\>?                            | null              | Synchronous transform function             |
+| `TransformAsync`   | Func\<FlowContext, CancellationToken, Task\<object?\>\>? | null              | Asynchronous transform function            |
+| `OutputKey`        | string                                                   | `"{Name}_output"` | Context key for the result                 |
+| `SkipIfNullOutput` | bool                                                     | `true`            | Skip storing the key if the result is null |
 
 Provide either `Transform` or `TransformAsync` (not both). If both are set, `TransformAsync` takes priority.
 
@@ -309,14 +309,14 @@ Wraps any node and retries it on failure with configurable delay and backoff.
 
 **Properties:**
 
-| Property | Type | Default | Description |
-|---|---|---|---|
-| `Name` | string | required | Step name |
-| `Inner` | IFlowNode | required | The node to wrap |
-| `MaxAttempts` | int | `3` | Total attempts (1 means no retry) |
-| `DelayMs` | int | `2000` | Base delay between attempts in milliseconds |
-| `RetryOn` | Func\<NodeResult, bool\>? | null | Custom retry condition; retries on any failure if null |
-| `BackoffMultiplier` | double | `1.0` | Multiply delay on each retry (use 2.0 for exponential backoff) |
+| Property            | Type                      | Default  | Description                                                    |
+| ------------------- | ------------------------- | -------- | -------------------------------------------------------------- |
+| `Name`              | string                    | required | Step name                                                      |
+| `Inner`             | IFlowNode                 | required | The node to wrap                                               |
+| `MaxAttempts`       | int                       | `3`      | Total attempts (1 means no retry)                              |
+| `DelayMs`           | int                       | `2000`   | Base delay between attempts in milliseconds                    |
+| `RetryOn`           | Func\<NodeResult, bool\>? | null     | Custom retry condition; retries on any failure if null         |
+| `BackoffMultiplier` | double                    | `1.0`    | Multiply delay on each retry (use 2.0 for exponential backoff) |
 
 **Example:**
 
@@ -340,12 +340,12 @@ Runs multiple branches at the same time using `Task.WhenAll`.
 
 **Properties:**
 
-| Property | Type | Default | Description |
-|---|---|---|---|
-| `Name` | string | required | Step name |
-| `Branches` | List\<List\<IFlowNode\>\> | required | Each inner list is one parallel branch |
-| `WaitAll` | bool | `true` | Wait for all branches before continuing |
-| `AbortOnBranchFailure` | bool | `false` | Cancel remaining branches if one fails |
+| Property               | Type                      | Default  | Description                             |
+| ---------------------- | ------------------------- | -------- | --------------------------------------- |
+| `Name`                 | string                    | required | Step name                               |
+| `Branches`             | List\<List\<IFlowNode\>\> | required | Each inner list is one parallel branch  |
+| `WaitAll`              | bool                      | `true`   | Wait for all branches before continuing |
+| `AbortOnBranchFailure` | bool                      | `false`  | Cancel remaining branches if one fails  |
 
 > **Thread safety:** The shared context dictionary is not thread-safe. Each parallel branch should write to its own unique key. Do not read a key that another branch is writing to at the same time.
 
