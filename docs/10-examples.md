@@ -345,9 +345,40 @@ var serviceId = await FlowBuilder
 ```
 
 **Execution order:**
+
 1. Main nodes run in sequence (add_dns_record → wait_for_dns → verify_dns)
 2. If all succeeded → `OnSuccess` handlers run
 3. If any failed → `OnFail` handlers run instead
 4. `OnFinish` handlers always run last
 
-Lifecycle event nodes can access `context.FlowStatus` (`"completed"` or `"failed"`) and `context.FlowError` to inspect the outcome.
+### Checking Success or Failure in OnFinish
+
+Inside an `OnFinish` handler, use `context.FlowStatus` and `context.FlowError` to determine the outcome:
+
+```csharp
+.OnFinish(new TransformNode("final_audit") {
+    Transform = ctx =>
+    {
+        var status = ctx.FlowStatus;  // "completed" or "failed"
+        var error = ctx.FlowError;    // error message or null
+
+        return status == "completed"
+            ? $"Domain flow succeeded"
+            : $"Domain flow failed: {error}";
+    },
+    OutputKey = "audit_summary"
+})
+```
+
+Or with an email that adapts its content:
+
+```csharp
+.OnFinish(new EmailSendNode("final_report") {
+    ToEmail = "devops@example.com",
+    Subject = "Domain Flow Report",
+    HtmlBodyResolver = ctx =>
+        ctx.FlowStatus == "completed"
+            ? $"<p>Flow <b>{ctx.FlowName}</b> completed successfully.</p>"
+            : $"<p>Flow <b>{ctx.FlowName}</b> failed: {ctx.FlowError}</p>"
+})
+```

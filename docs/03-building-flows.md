@@ -162,25 +162,71 @@ You can chain multiple handlers for each event — they run in the order they we
 .OnSuccess(new WebhookNode("notify_team") { /* ... */ })
 ```
 
-### Accessing Flow Outcome
+### Accessing Flow Outcome (OnFinish)
 
-Lifecycle event nodes can read the flow's outcome through `FlowContext`:
+Since `OnFinish` runs regardless of outcome, you'll often need to check whether the flow succeeded or failed. Every lifecycle event node can read the outcome through `FlowContext`:
 
 | Property       | Type      | Description                                      |
 | -------------- | --------- | ------------------------------------------------ |
 | `FlowStatus`  | `string?` | `"completed"` or `"failed"` after main nodes run |
 | `FlowError`   | `string?` | Error message if failed; `null` on success        |
 
+**Example — OnFinish node that branches on status:**
+
 ```csharp
-public async Task<NodeResult> ExecuteAsync(FlowContext context, CancellationToken ct)
+public class FlowAuditNode : IFlowNode
 {
-    var status = context.FlowStatus;  // "completed" or "failed"
-    var error = context.FlowError;    // error message or null
-    // ... your logic
+    public string Name { get; }
+    public string NodeType => "FlowAudit";
+
+    public FlowAuditNode(string name) => Name = name;
+
+    public async Task<NodeResult> ExecuteAsync(FlowContext context, CancellationToken ct)
+    {
+        var isSuccess = context.FlowStatus == "completed";
+        var error = context.FlowError; // null when succeeded
+
+        if (isSuccess)
+        {
+            // Flow succeeded — log or notify
+            context.Set("audit_message", $"Flow '{context.FlowName}' completed successfully.");
+        }
+        else
+        {
+            // Flow failed — include error details
+            context.Set("audit_message", $"Flow '{context.FlowName}' failed: {error}");
+        }
+
+        return NodeResult.Ok();
+    }
 }
 ```
 
-> **Note:** Lifecycle event node failures are logged in the database but do **not** change the flow's final status. If the main nodes succeeded, the flow status remains `"completed"` even if an OnSuccess handler fails.
+**Usage:**
+
+```csharp
+var serviceId = await FlowBuilder
+    .Create("process_order")
+    .AddNode(new HttpRequestNode("charge_payment") { /* ... */ })
+    .AddNode(new EmailSendNode("send_receipt") { /* ... */ })
+    .OnFinish(new FlowAuditNode("audit_result"))
+    .StartAsync();
+```
+
+You can also use built-in nodes with `HtmlBodyResolver` or `Transform` lambdas that check status inline:
+
+```csharp
+.OnFinish(new EmailSendNode("notify_admin") {
+    ToEmail = "admin@example.com",
+    Subject = "Flow finished",
+    HtmlBodyResolver = ctx =>
+        ctx.FlowStatus == "completed"
+            ? $"<p>Flow <b>{ctx.FlowName}</b> completed successfully.</p>"
+            : $"<p>Flow <b>{ctx.FlowName}</b> failed: {ctx.FlowError}</p>"
+})
+```
+
+> **Note:** Lifecycle event node failures are logged in the database but do **not** change the flow's final status. If the main nodes succeeded, the flow status remains `"completed"` even if an OnSuccess or OnFinish handler fails.
 
 ---
 
