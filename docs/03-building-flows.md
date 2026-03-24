@@ -166,10 +166,10 @@ You can chain multiple handlers for each event — they run in the order they we
 
 Since `OnFinish` runs regardless of outcome, you'll often need to check whether the flow succeeded or failed. Every lifecycle event node can read the outcome through `FlowContext`:
 
-| Property       | Type      | Description                                      |
-| -------------- | --------- | ------------------------------------------------ |
-| `FlowStatus`  | `string?` | `"completed"` or `"failed"` after main nodes run |
-| `FlowError`   | `string?` | Error message if failed; `null` on success        |
+| Property       | Type             | Description                                                   |
+| -------------- | ---------------- | ------------------------------------------------------------- |
+| `FlowStatus`  | `FlowRunStatus?` | `FlowRunStatus.Completed` or `FlowRunStatus.Failed` after run |
+| `FlowError`   | `string?`        | Error message if failed; `null` on success                    |
 
 **Example — OnFinish node that branches on status:**
 
@@ -183,7 +183,7 @@ public class FlowAuditNode : IFlowNode
 
     public async Task<NodeResult> ExecuteAsync(FlowContext context, CancellationToken ct)
     {
-        var isSuccess = context.FlowStatus == "completed";
+        var isSuccess = context.FlowStatus == FlowRunStatus.Completed;
         var error = context.FlowError; // null when succeeded
 
         if (isSuccess)
@@ -220,13 +220,13 @@ You can also use built-in nodes with `HtmlBodyResolver` or `Transform` lambdas t
     ToEmail = "admin@example.com",
     Subject = "Flow finished",
     HtmlBodyResolver = ctx =>
-        ctx.FlowStatus == "completed"
+        ctx.FlowStatus == FlowRunStatus.Completed
             ? $"<p>Flow <b>{ctx.FlowName}</b> completed successfully.</p>"
             : $"<p>Flow <b>{ctx.FlowName}</b> failed: {ctx.FlowError}</p>"
 })
 ```
 
-> **Note:** Lifecycle event node failures are logged in the database but do **not** change the flow's final status. If the main nodes succeeded, the flow status remains `"completed"` even if an OnSuccess or OnFinish handler fails.
+> **Note:** Lifecycle event node failures are logged in the database but do **not** change the flow's final status. If the main nodes succeeded, the flow status remains `FlowRunStatus.Completed` even if an OnSuccess or OnFinish handler fails.
 
 ---
 

@@ -34,7 +34,7 @@ internal class FlowRunner
         var ct = cts.Token;
 
         var runStartedAtMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-        await UpdateRunStatusAsync(context.ServiceId, "running",
+        await UpdateRunStatusAsync(context.ServiceId, FlowRunStatus.Running,
             startedAt: runStartedAtMs / 1000);
 
         var completedNodes = 0;
@@ -51,7 +51,7 @@ internal class FlowRunner
                 var nodeStartedAt = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
 
                 if (context.Config.EnableNodeLogging)
-                    await CreateNodeLogAsync(context.ServiceId, node, sequence, "running", nodeStartedAt);
+                    await CreateNodeLogAsync(context.ServiceId, node, sequence, FlowNodeStatus.Running, nodeStartedAt);
 
                 NodeResult result;
                 string? branchTaken = null;
@@ -84,7 +84,7 @@ internal class FlowRunner
                 if (context.Config.EnableNodeLogging)
                 {
                     await UpdateNodeLogAsync(context.ServiceId, node.Name, sequence,
-                        result.Success ? "completed" : "failed",
+                        result.Success ? FlowNodeStatus.Completed : FlowNodeStatus.Failed,
                         result.ErrorMessage,
                         branchTaken,
                         retryCount,
@@ -121,7 +121,7 @@ internal class FlowRunner
         }
 
         var runCompletedAtMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-        var status = flowError == null ? "completed" : "failed";
+        var status = flowError == null ? FlowRunStatus.Completed : FlowRunStatus.Failed;
 
         // Expose flow outcome to lifecycle event nodes
         context.FlowStatus = status;
@@ -174,7 +174,7 @@ internal class FlowRunner
             var nodeStartedAt = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
 
             if (context.Config.EnableNodeLogging)
-                await CreateNodeLogAsync(context.ServiceId, node, sequence, "running", nodeStartedAt);
+                await CreateNodeLogAsync(context.ServiceId, node, sequence, FlowNodeStatus.Running, nodeStartedAt);
 
             NodeResult result;
             try
@@ -197,7 +197,7 @@ internal class FlowRunner
             if (context.Config.EnableNodeLogging)
             {
                 await UpdateNodeLogAsync(context.ServiceId, node.Name, sequence,
-                    result.Success ? "completed" : "failed",
+                    result.Success ? FlowNodeStatus.Completed : FlowNodeStatus.Failed,
                     result.ErrorMessage,
                     branchTaken: null,
                     retryCount: 0,
@@ -213,7 +213,7 @@ internal class FlowRunner
 
     // --- Database helpers ---
 
-    private async Task UpdateRunStatusAsync(string serviceId, string status,
+    private async Task UpdateRunStatusAsync(string serviceId, FlowRunStatus status,
         long? startedAt = null, long? completedAt = null, long? durationMs = null, string? errorMessage = null)
     {
         if (_db == null) return;
@@ -221,7 +221,7 @@ internal class FlowRunner
         var run = await _db.FlowRun.FirstOrDefaultAsync(r => r.ServiceId == serviceId);
         if (run == null) return;
 
-        run.Status = status;
+        run.Status = status.ToString().ToLowerInvariant();
         run.TimeUpdated = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
 
         if (startedAt.HasValue) run.StartedAt = startedAt.Value;
@@ -244,7 +244,7 @@ internal class FlowRunner
         await _db.SaveChangesAsync();
     }
 
-    private async Task CreateNodeLogAsync(string serviceId, IFlowNode node, int sequence, string status, long startedAtMs)
+    private async Task CreateNodeLogAsync(string serviceId, IFlowNode node, int sequence, FlowNodeStatus status, long startedAtMs)
     {
         if (_db == null) return;
 
@@ -254,7 +254,7 @@ internal class FlowRunner
             NodeName = node.Name,
             NodeType = node.NodeType,
             Sequence = sequence,
-            Status = status,
+            Status = status.ToString().ToLowerInvariant(),
             StartedAt = startedAtMs / 1000,
             TimeCreated = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
             TimeUpdated = DateTimeOffset.UtcNow.ToUnixTimeSeconds()
@@ -265,7 +265,7 @@ internal class FlowRunner
     }
 
     private async Task UpdateNodeLogAsync(string serviceId, string nodeName, int sequence,
-        string status, string? errorMessage, string? branchTaken, int retryCount,
+        FlowNodeStatus status, string? errorMessage, string? branchTaken, int retryCount,
         long completedAt, long durationMs)
     {
         if (_db == null) return;
@@ -274,7 +274,7 @@ internal class FlowRunner
             .FirstOrDefaultAsync(l => l.ServiceId == serviceId && l.Sequence == sequence);
         if (log == null) return;
 
-        log.Status = status;
+        log.Status = status.ToString().ToLowerInvariant();
         log.CompletedAt = completedAt;
         log.DurationMs = durationMs;
         log.RetryCount = retryCount;

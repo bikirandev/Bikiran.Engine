@@ -1,6 +1,6 @@
 # Flow Definitions — Enhancement Plan
 
-> **Package:** Bikiran.Engine v1.2.0  
+> **Package:** Bikiran.Engine v1.3.0  
 > **Date:** 2026-03-24  
 > **Status:** Planning  
 > **Scope:** Extend the Flow Definitions subsystem with flow lifecycle events, new JSON node support, validation, auth, import/export, versioning, parameter schemas, error handling, and testing.
@@ -93,8 +93,8 @@ var serviceId = await FlowBuilder
 Expose flow outcome information to lifecycle event nodes:
 
 ```csharp
-public string? FlowStatus { get; internal set; }   // "completed" or "failed"
-public string? FlowError { get; internal set; }     // error message if failed, null on success
+public FlowRunStatus? FlowStatus { get; internal set; }   // FlowRunStatus.Completed or FlowRunStatus.Failed
+public string? FlowError { get; internal set; }            // error message if failed, null on success
 ```
 
 ### 2.4 FlowRunner Changes

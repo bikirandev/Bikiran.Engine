@@ -39,8 +39,8 @@ public class FlowContext
 
     // --- Flow outcome (set by FlowRunner after main nodes complete) ---
 
-    /// <summary>Final status of the flow after main nodes complete: "completed" or "failed".</summary>
-    public string? FlowStatus { get; internal set; }
+    /// <summary>Final status of the flow after main nodes complete.</summary>
+    public FlowRunStatus? FlowStatus { get; internal set; }
 
     /// <summary>Error message if the flow failed; null on success.</summary>
     public string? FlowError { get; internal set; }

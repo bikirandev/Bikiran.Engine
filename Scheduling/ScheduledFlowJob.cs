@@ -1,3 +1,4 @@
+using Bikiran.Engine.Core;
 using Bikiran.Engine.Definitions;
 using Bikiran.Engine.Database;
 using Microsoft.EntityFrameworkCore;
@@ -65,7 +66,7 @@ public class ScheduledFlowJob : IJob
 
             schedule.LastRunAt = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
             schedule.LastRunServiceId = serviceId;
-            schedule.LastRunStatus = "triggered";
+            schedule.LastRunStatus = FlowScheduleRunStatus.Triggered.ToString().ToLowerInvariant();
             schedule.TimeUpdated = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
             await db.SaveChangesAsync();
 
@@ -78,7 +79,7 @@ public class ScheduledFlowJob : IJob
             _logger?.LogError(ex, "Schedule '{Key}' failed to trigger.", scheduleKey);
 
             schedule.LastRunAt = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-            schedule.LastRunStatus = "error";
+            schedule.LastRunStatus = FlowScheduleRunStatus.Error.ToString().ToLowerInvariant();
             schedule.TimeUpdated = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
             await db.SaveChangesAsync();
         }

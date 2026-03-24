@@ -145,7 +145,7 @@ public class FlowBuilder
             {
                 ServiceId = context.ServiceId,
                 FlowName = _flowName,
-                Status = "pending",
+                Status = FlowRunStatus.Pending.ToString().ToLowerInvariant(),
                 TriggerSource = _config.TriggerSource,
                 Config = JsonSerializer.Serialize(_config),
                 ContextMeta = JsonSerializer.Serialize(contextMeta),

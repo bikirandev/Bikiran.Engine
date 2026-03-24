@@ -359,10 +359,10 @@ Inside an `OnFinish` handler, use `context.FlowStatus` and `context.FlowError` t
 .OnFinish(new TransformNode("final_audit") {
     Transform = ctx =>
     {
-        var status = ctx.FlowStatus;  // "completed" or "failed"
+        var status = ctx.FlowStatus;  // FlowRunStatus.Completed or FlowRunStatus.Failed
         var error = ctx.FlowError;    // error message or null
 
-        return status == "completed"
+        return status == FlowRunStatus.Completed
             ? $"Domain flow succeeded"
             : $"Domain flow failed: {error}";
     },
@@ -377,7 +377,7 @@ Or with an email that adapts its content:
     ToEmail = "devops@example.com",
     Subject = "Domain Flow Report",
     HtmlBodyResolver = ctx =>
-        ctx.FlowStatus == "completed"
+        ctx.FlowStatus == FlowRunStatus.Completed
             ? $"<p>Flow <b>{ctx.FlowName}</b> completed successfully.</p>"
             : $"<p>Flow <b>{ctx.FlowName}</b> failed: {ctx.FlowError}</p>"
 })
