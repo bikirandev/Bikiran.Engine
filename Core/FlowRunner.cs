@@ -43,6 +43,11 @@ internal class FlowRunner
         var completedNodes = 0;
         string? flowError = null;
 
+        // Track current node state so the outer catch can create a failure log
+        int currentSequence = 0;
+        long currentNodeStartedAt = 0;
+        bool nodeLogCreated = false;
+
         try
         {
             for (var i = 0; i < nodes.Count; i++)
@@ -50,12 +55,18 @@ internal class FlowRunner
                 ct.ThrowIfCancellationRequested();
                 var node = nodes[i];
                 var sequence = i + 1;
+                currentSequence = sequence;
+                nodeLogCreated = false;
 
                 var nodeStartedAt = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+                currentNodeStartedAt = nodeStartedAt;
 
                 if (context.Config.EnableNodeLogging)
+                {
                     await CreateNodeLogAsync(context.ServiceId, node, sequence, FlowNodeStatus.Running,
                         nodeStartedAt, SerializeNodeInput(node));
+                    nodeLogCreated = true;
+                }
 
                 // Persist the node's progress message to the run record
                 await UpdateRunProgressMessageAsync(context.ServiceId, node.ProgressMessage);
@@ -121,11 +132,15 @@ internal class FlowRunner
         catch (OperationCanceledException)
         {
             flowError = "max_execution_time_exceeded";
+            await TryRecordFailingNodeLogAsync(context, currentSequence, nodeLogCreated,
+                currentNodeStartedAt, flowError);
         }
         catch (Exception ex)
         {
             flowError = ex.Message;
             context.Logger?.LogError(ex, "Unhandled exception in flow {FlowName}", context.FlowName);
+            await TryRecordFailingNodeLogAsync(context, currentSequence, nodeLogCreated,
+                currentNodeStartedAt, flowError);
         }
 
         var runCompletedAtMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
@@ -222,6 +237,66 @@ internal class FlowRunner
         }
 
         return sequence;
+    }
+
+    // --- Failure recovery helpers ---
+
+    /// <summary>
+    /// Best-effort attempt to create or update a node log entry when the outer catch
+    /// is hit during node processing. This ensures the failing node always has a log record.
+    /// </summary>
+    private async Task TryRecordFailingNodeLogAsync(
+        FlowContext context, int sequence, bool logAlreadyCreated,
+        long startedAtMs, string errorMessage)
+    {
+        if (!context.Config.EnableNodeLogging || sequence <= 0 || _db == null) return;
+
+        try
+        {
+            var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+            var truncatedError = errorMessage.Length > 500 ? errorMessage[..500] : errorMessage;
+
+            if (logAlreadyCreated)
+            {
+                // Log was created with "running" status — update it to "failed"
+                var log = await _db.FlowNodeLog
+                    .FirstOrDefaultAsync(l => l.ServiceId == context.ServiceId && l.Sequence == sequence);
+                if (log != null)
+                {
+                    log.Status = FlowNodeStatus.Failed.ToString().ToLowerInvariant();
+                    log.ErrorMessage = truncatedError;
+                    log.CompletedAt = now / 1000;
+                    log.DurationMs = now - startedAtMs;
+                    log.TimeUpdated = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+                    await _db.SaveChangesAsync();
+                }
+            }
+            else
+            {
+                // Log was never created — create it directly as failed
+                var log = new FlowNodeLog
+                {
+                    ServiceId = context.ServiceId,
+                    NodeName = $"node_{sequence}",
+                    NodeType = FlowNodeType.Custom.ToString(),
+                    Sequence = sequence,
+                    Status = FlowNodeStatus.Failed.ToString().ToLowerInvariant(),
+                    InputData = "{}",
+                    ErrorMessage = truncatedError,
+                    StartedAt = startedAtMs / 1000,
+                    CompletedAt = now / 1000,
+                    DurationMs = now - startedAtMs,
+                    TimeCreated = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+                    TimeUpdated = DateTimeOffset.UtcNow.ToUnixTimeSeconds()
+                };
+                await _db.FlowNodeLog.AddAsync(log);
+                await _db.SaveChangesAsync();
+            }
+        }
+        catch
+        {
+            // Best effort — swallow if the database is unavailable
+        }
     }
 
     // --- Database helpers ---
