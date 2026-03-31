@@ -4,25 +4,24 @@ Nodes are the building blocks of every flow. Each node performs one task — mak
 
 ---
 
-## Node Type Enum
+## Node Type Classification
 
-Every node has a `NodeType` property that returns a value from the `FlowNodeType` enum. Built-in nodes return their specific type automatically. Custom nodes default to `FlowNodeType.Custom` via a default interface implementation — you do not need to set or override this property.
+The engine internally classifies each node by type for logging and diagnostics. This is handled automatically — you never need to set a node type yourself.
 
-```csharp
-public enum FlowNodeType
-{
-    Wait,
-    HttpRequest,
-    EmailSend,
-    IfElse,
-    WhileLoop,
-    DatabaseQuery,
-    Transform,
-    Retry,
-    Parallel,
-    Custom          // For user-defined custom nodes
-}
-```
+Built-in nodes are classified as their specific type (e.g., `Wait`, `HttpRequest`). Custom nodes are automatically classified as `Custom`. The classification appears in the `NodeType` column of the `FlowNodeLog` database table.
+
+| Type           | Description                            |
+| -------------- | -------------------------------------- |
+| Wait           | Pauses flow execution                  |
+| HttpRequest    | Makes an outbound HTTP request         |
+| EmailSend      | Sends an email via SMTP                |
+| IfElse         | Evaluates a condition and branches     |
+| WhileLoop      | Repeats steps while a condition holds  |
+| DatabaseQuery  | Runs an EF Core query                  |
+| Transform      | Reshapes or derives context data       |
+| Retry          | Wraps a node with retry logic          |
+| Parallel       | Runs branches concurrently             |
+| Custom         | Any user-defined node                  |
 
 ---
 

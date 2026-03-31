@@ -1,5 +1,6 @@
 using Bikiran.Engine.Database;
 using Bikiran.Engine.Database.Entities;
+using Bikiran.Engine.Nodes;
 using Microsoft.EntityFrameworkCore;
 using System.Net.Http;
 using System.Reflection;
@@ -15,6 +16,39 @@ internal class FlowRunnerHelper
 {
     private readonly EngineDbContext? _db;
     private FlowRun? _cachedRun;
+
+    /// <summary>
+    /// Maps built-in node types to their FlowNodeType enum value.
+    /// Custom nodes (any type not in this map) get FlowNodeType.Custom.
+    /// </summary>
+    private static readonly Dictionary<Type, FlowNodeType> _builtInNodeTypes = new()
+    {
+        { typeof(WaitNode), FlowNodeType.Wait },
+        { typeof(HttpRequestNode), FlowNodeType.HttpRequest },
+        { typeof(EmailSendNode), FlowNodeType.EmailSend },
+        { typeof(IfElseNode), FlowNodeType.IfElse },
+        { typeof(WhileLoopNode), FlowNodeType.WhileLoop },
+        { typeof(TransformNode), FlowNodeType.Transform },
+        { typeof(RetryNode), FlowNodeType.Retry },
+        { typeof(ParallelNode), FlowNodeType.Parallel },
+    };
+
+    /// <summary>
+    /// Resolves the FlowNodeType for a node instance.
+    /// Returns the specific type for built-in nodes, or Custom for user-defined nodes.
+    /// </summary>
+    internal static FlowNodeType ResolveNodeType(IFlowNode node)
+    {
+        var nodeType = node.GetType();
+        if (_builtInNodeTypes.TryGetValue(nodeType, out var type))
+            return type;
+
+        // Handle generic types like DatabaseQueryNode<TContext>
+        if (nodeType.IsGenericType && nodeType.GetGenericTypeDefinition() == typeof(DatabaseQueryNode<>))
+            return FlowNodeType.DatabaseQuery;
+
+        return FlowNodeType.Custom;
+    }
 
     internal FlowRunnerHelper(EngineDbContext? db)
     {
@@ -96,7 +130,7 @@ internal class FlowRunnerHelper
         {
             ServiceId = serviceId,
             NodeName = node.Name,
-            NodeType = node.NodeType.ToString(),
+            NodeType = ResolveNodeType(node).ToString(),
             Sequence = sequence,
             Status = status.ToString().ToLowerInvariant(),
             InputData = inputData,
@@ -176,7 +210,7 @@ internal class FlowRunnerHelper
                     if (node != null)
                     {
                         nodeName = node.Name;
-                        nodeType = node.NodeType.ToString();
+                        nodeType = ResolveNodeType(node).ToString();
                     }
                 }
                 catch { /* Name/NodeType getter may itself be the source of the exception */ }
@@ -216,11 +250,11 @@ internal class FlowRunnerHelper
 
     private static readonly HashSet<string> _skipProperties = new()
     {
-        "Name", "NodeType", "ProgressMessage"
+        "Name", "ProgressMessage"
     };
 
     /// <summary>
-    /// Serializes a node's public properties (excluding Name, NodeType, ProgressMessage) to JSON.
+    /// Serializes a node's public properties (excluding Name, ProgressMessage) to JSON.
     /// Used for the InputData column of FlowNodeLog.
     /// </summary>
     internal static string SerializeNodeInput(IFlowNode? node)

@@ -10,7 +10,6 @@ namespace Bikiran.Engine.Nodes;
 public class DatabaseQueryNode<TContext> : IFlowNode where TContext : DbContext
 {
     public string Name { get; }
-    public FlowNodeType NodeType => FlowNodeType.DatabaseQuery;
 
     /// <inheritdoc />
     public string? ProgressMessage { get; set; }

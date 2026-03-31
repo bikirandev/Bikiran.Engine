@@ -1,9 +1,9 @@
 namespace Bikiran.Engine.Core;
 
 /// <summary>
-/// Identifies the type of a flow node.
+/// Identifies the type of a flow node. Used internally by the engine for logging.
 /// </summary>
-public enum FlowNodeType
+internal enum FlowNodeType
 {
     /// <summary>Pauses flow execution for a configured duration.</summary>
     Wait,

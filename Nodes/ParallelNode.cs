@@ -10,7 +10,6 @@ namespace Bikiran.Engine.Nodes;
 public class ParallelNode : IFlowNode
 {
     public string Name { get; }
-    public FlowNodeType NodeType => FlowNodeType.Parallel;
 
     /// <inheritdoc />
     public string? ProgressMessage { get; set; }

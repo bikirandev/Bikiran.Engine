@@ -121,11 +121,11 @@ internal class FlowRunner
                 }
                 catch (OperationCanceledException)
                 {
-                    result = NodeResult.Fail("max_execution_time_exceeded");
+                    result = NodeResult.Fail($"Node '{node.Name}' was cancelled because the flow exceeded MaxExecutionTime ({context.Config.MaxExecutionTime.TotalMinutes} minutes).");
                 }
                 catch (Exception ex)
                 {
-                    result = NodeResult.Fail(ex.Message);
+                    result = NodeResult.Fail($"Node '{node.Name}' threw an unhandled exception: {ex.Message}");
                     context.Logger?.LogError(ex, "Unhandled exception in node {NodeName}", node.Name);
                 }
 
@@ -164,13 +164,13 @@ internal class FlowRunner
         }
         catch (OperationCanceledException)
         {
-            flowError = "max_execution_time_exceeded";
+            flowError = $"Flow '{context.FlowName}' exceeded MaxExecutionTime ({context.Config.MaxExecutionTime.TotalMinutes} minutes). Last active node: '{currentNode?.Name ?? "unknown"}'.";
             await _helper.TryRecordFailingNodeLogAsync(context, currentNode, currentSequence,
                 nodeLogCreated, currentNodeStartedAt, flowError);
         }
         catch (Exception ex)
         {
-            flowError = ex.Message;
+            flowError = $"Flow '{context.FlowName}' failed at node '{currentNode?.Name ?? "unknown"}': {ex.Message}";
             context.Logger?.LogError(ex, "Unhandled exception in flow {FlowName}", context.FlowName);
             await _helper.TryRecordFailingNodeLogAsync(context, currentNode, currentSequence,
                 nodeLogCreated, currentNodeStartedAt, flowError);
@@ -249,11 +249,11 @@ internal class FlowRunner
             }
             catch (OperationCanceledException)
             {
-                result = NodeResult.Fail("lifecycle_timeout_exceeded");
+                result = NodeResult.Fail($"{phase} node '{node.Name}' was cancelled because the lifecycle phase exceeded its 5-minute timeout.");
             }
             catch (Exception ex)
             {
-                result = NodeResult.Fail(ex.Message);
+                result = NodeResult.Fail($"{phase} node '{node.Name}' threw an unhandled exception: {ex.Message}");
                 context.Logger?.LogError(ex, "{Phase} node '{NodeName}' failed", phase, node.Name);
             }
 

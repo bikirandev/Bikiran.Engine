@@ -8,7 +8,6 @@ namespace Bikiran.Engine.Nodes;
 public class WhileLoopNode : IFlowNode
 {
     public string Name { get; }
-    public FlowNodeType NodeType => FlowNodeType.WhileLoop;
 
     /// <inheritdoc />
     public string? ProgressMessage { get; set; }

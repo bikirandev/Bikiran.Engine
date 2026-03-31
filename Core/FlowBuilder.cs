@@ -120,8 +120,7 @@ public class FlowBuilder
 
     private async Task<(FlowContext context, IServiceScope? scope, FlowRunner runner)> PrepareAsync()
     {
-        if (_nodes.Count == 0)
-            throw new InvalidOperationException("A flow must have at least one node.");
+        ValidateFlow();
 
         var context = new FlowContext
         {
@@ -168,5 +167,60 @@ public class FlowBuilder
 
         var runner = new FlowRunner(engineDb);
         return (context, scope, runner);
+    }
+
+    /// <summary>
+    /// Validates all flow configuration and nodes before execution begins.
+    /// Throws <see cref="InvalidOperationException"/> with a clear message if anything is misconfigured.
+    /// </summary>
+    private void ValidateFlow()
+    {
+        // Flow name
+        if (string.IsNullOrWhiteSpace(_flowName))
+            throw new InvalidOperationException(
+                "Flow name is required. Pass a non-empty name to FlowBuilder.Create(\"my_flow\").");
+
+        // At least one node
+        if (_nodes.Count == 0)
+            throw new InvalidOperationException(
+                $"Flow '{_flowName}' has no nodes. Add at least one node with .AddNode() before starting.");
+
+        // MaxExecutionTime
+        if (_config.MaxExecutionTime <= TimeSpan.Zero)
+            throw new InvalidOperationException(
+                $"Flow '{_flowName}': MaxExecutionTime must be a positive duration, but was {_config.MaxExecutionTime}.");
+
+        // Validate each node name and collect for duplicate check
+        var allNodes = new List<(string phase, IFlowNode node)>();
+        foreach (var n in _nodes) allNodes.Add(("main", n));
+        foreach (var n in _onSuccessNodes) allNodes.Add(("OnSuccess", n));
+        foreach (var n in _onFailNodes) allNodes.Add(("OnFail", n));
+        foreach (var n in _onFinishNodes) allNodes.Add(("OnFinish", n));
+
+        var seenNames = new HashSet<string>(StringComparer.Ordinal);
+
+        foreach (var (phase, node) in allNodes)
+        {
+            // Null node check
+            if (node == null)
+                throw new InvalidOperationException(
+                    $"Flow '{_flowName}': A null node was added to the {phase} phase. Remove it or provide a valid IFlowNode instance.");
+
+            // Name validation (PascalCase, non-empty)
+            try
+            {
+                FlowNodeNameValidator.Validate(node.Name);
+            }
+            catch (ArgumentException ex)
+            {
+                throw new InvalidOperationException(
+                    $"Flow '{_flowName}', {phase} phase: {ex.Message}");
+            }
+
+            // Duplicate name check
+            if (!seenNames.Add(node.Name))
+                throw new InvalidOperationException(
+                    $"Flow '{_flowName}': Duplicate node name '{node.Name}' found. Each node must have a unique name across all phases (main, OnSuccess, OnFail, OnFinish).");
+        }
     }
 }

@@ -13,7 +13,6 @@ namespace Bikiran.Engine.Nodes;
 public class HttpRequestNode : IFlowNode
 {
     public string Name { get; }
-    public FlowNodeType NodeType => FlowNodeType.HttpRequest;
 
     /// <inheritdoc />
     public string? ProgressMessage { get; set; }

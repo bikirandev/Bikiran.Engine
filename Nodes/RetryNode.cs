@@ -8,7 +8,6 @@ namespace Bikiran.Engine.Nodes;
 public class RetryNode : IFlowNode
 {
     public string Name { get; }
-    public FlowNodeType NodeType => FlowNodeType.Retry;
 
     /// <inheritdoc />
     public string? ProgressMessage { get; set; }

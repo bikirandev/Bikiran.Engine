@@ -8,7 +8,6 @@ namespace Bikiran.Engine.Nodes;
 public class WaitNode : IFlowNode
 {
     public string Name { get; }
-    public FlowNodeType NodeType => FlowNodeType.Wait;
 
     /// <inheritdoc />
     public string? ProgressMessage { get; set; }

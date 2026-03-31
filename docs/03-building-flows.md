@@ -65,6 +65,24 @@ For retry behavior, wrap individual steps with `RetryNode` instead of changing t
 
 ---
 
+## Pre-Run Validation
+
+When you call `.StartAsync()` or `.StartAndWaitAsync()`, the engine validates the entire flow **before** execution begins. If any configuration is invalid, an `InvalidOperationException` is thrown immediately with a clear, actionable message — so you can fix problems during development rather than debugging failures at runtime.
+
+**What is validated:**
+
+| Check                     | Error Example                                                                 |
+| ------------------------- | ----------------------------------------------------------------------------- |
+| Flow name is not empty    | *"Flow name is required. Pass a non-empty name to FlowBuilder.Create(...)."* |
+| At least one node exists  | *"Flow 'my_flow' has no nodes. Add at least one node with .AddNode()..."*    |
+| MaxExecutionTime > 0      | *"Flow 'my_flow': MaxExecutionTime must be a positive duration..."*          |
+| All node names are valid  | *"Flow 'my_flow', main phase: Node name 'bad name' must be PascalCase..."*   |
+| No duplicate node names   | *"Flow 'my_flow': Duplicate node name 'FetchOrder' found..."*               |
+
+This validation runs across all phases: main nodes, OnSuccess, OnFail, and OnFinish.
+
+---
+
 ## Providing Context
 
 Use `.WithContext()` to give the flow access to services that steps can use during execution:

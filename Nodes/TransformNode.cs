@@ -9,7 +9,6 @@ namespace Bikiran.Engine.Nodes;
 public class TransformNode : IFlowNode
 {
     public string Name { get; }
-    public FlowNodeType NodeType => FlowNodeType.Transform;
 
     /// <inheritdoc />
     public string? ProgressMessage { get; set; }

@@ -11,12 +11,6 @@ public interface IFlowNode
     string Name { get; }
 
     /// <summary>
-    /// The node type enum value. Defaults to <see cref="FlowNodeType.Custom"/> for user-defined nodes.
-    /// Built-in nodes override this internally. Do not override in custom node implementations.
-    /// </summary>
-    FlowNodeType NodeType => FlowNodeType.Custom;
-
-    /// <summary>
     /// Optional progress message shown while this node is executing.
     /// Example: "Waiting for DNS propagation".
     /// </summary>

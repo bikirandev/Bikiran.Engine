@@ -12,7 +12,6 @@ namespace Bikiran.Engine.Nodes;
 public class EmailSendNode : IFlowNode
 {
     public string Name { get; }
-    public FlowNodeType NodeType => FlowNodeType.EmailSend;
 
     /// <inheritdoc />
     public string? ProgressMessage { get; set; }
