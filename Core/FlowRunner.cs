@@ -47,6 +47,7 @@ internal class FlowRunner
         int currentSequence = 0;
         long currentNodeStartedAt = 0;
         bool nodeLogCreated = false;
+        IFlowNode? currentNode = null;
 
         try
         {
@@ -56,6 +57,7 @@ internal class FlowRunner
                 var node = nodes[i];
                 var sequence = i + 1;
                 currentSequence = sequence;
+                currentNode = node;
                 nodeLogCreated = false;
 
                 var nodeStartedAt = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
@@ -132,14 +134,14 @@ internal class FlowRunner
         catch (OperationCanceledException)
         {
             flowError = "max_execution_time_exceeded";
-            await TryRecordFailingNodeLogAsync(context, currentSequence, nodeLogCreated,
+            await TryRecordFailingNodeLogAsync(context, currentNode, currentSequence, nodeLogCreated,
                 currentNodeStartedAt, flowError);
         }
         catch (Exception ex)
         {
             flowError = ex.Message;
             context.Logger?.LogError(ex, "Unhandled exception in flow {FlowName}", context.FlowName);
-            await TryRecordFailingNodeLogAsync(context, currentSequence, nodeLogCreated,
+            await TryRecordFailingNodeLogAsync(context, currentNode, currentSequence, nodeLogCreated,
                 currentNodeStartedAt, flowError);
         }
 
@@ -246,7 +248,7 @@ internal class FlowRunner
     /// is hit during node processing. This ensures the failing node always has a log record.
     /// </summary>
     private async Task TryRecordFailingNodeLogAsync(
-        FlowContext context, int sequence, bool logAlreadyCreated,
+        FlowContext context, IFlowNode? node, int sequence, bool logAlreadyCreated,
         long startedAtMs, string errorMessage)
     {
         if (!context.Config.EnableNodeLogging || sequence <= 0 || _db == null) return;
@@ -273,15 +275,28 @@ internal class FlowRunner
             }
             else
             {
+                // Resolve node name and type safely — fall back to generic values
+                var nodeName = "unknown";
+                var nodeType = FlowNodeType.Custom.ToString();
+                try
+                {
+                    if (node != null)
+                    {
+                        nodeName = node.Name;
+                        nodeType = node.NodeType.ToString();
+                    }
+                }
+                catch { /* Name/NodeType getter may itself be the source of the exception */ }
+
                 // Log was never created — create it directly as failed
                 var log = new FlowNodeLog
                 {
                     ServiceId = context.ServiceId,
-                    NodeName = $"node_{sequence}",
-                    NodeType = FlowNodeType.Custom.ToString(),
+                    NodeName = nodeName,
+                    NodeType = nodeType,
                     Sequence = sequence,
                     Status = FlowNodeStatus.Failed.ToString().ToLowerInvariant(),
-                    InputData = "{}",
+                    InputData = SerializeNodeInput(node),
                     ErrorMessage = truncatedError,
                     StartedAt = startedAtMs / 1000,
                     CompletedAt = now / 1000,
@@ -405,8 +420,9 @@ internal class FlowRunner
         "Name", "NodeType", "ProgressMessage"
     };
 
-    private static string SerializeNodeInput(IFlowNode node)
+    private static string SerializeNodeInput(IFlowNode? node)
     {
+        if (node == null) return "{}";
         try
         {
             var dict = new Dictionary<string, object?>();
