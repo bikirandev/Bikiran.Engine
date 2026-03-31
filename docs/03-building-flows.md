@@ -160,6 +160,7 @@ Lifecycle events let you run steps after the main flow completes. This is useful
 - The flow's final status (`completed` or `failed`), completion time, duration, and error message are saved to the database **before** any lifecycle event runs.
 - Lifecycle event steps are **not** counted in `TotalNodes` or `CompletedNodes`. They do not affect the flow's duration or error message.
 - If a lifecycle event step fails, it is logged but does **not** change the flow's final status.
+- Lifecycle event nodes run with a fresh 5-minute timeout, independent of the main flow's `MaxExecutionTime`. This ensures cleanup and notification nodes can execute even if the main flow's timeout expired.
 
 ### Example
 
@@ -226,14 +227,16 @@ Since `OnFinish` runs regardless of the outcome, you can check what happened usi
 
 ### Step-by-Step Execution
 
-1. The FlowRun status is updated to "running."
-2. A timeout timer starts based on `MaxExecutionTime`.
-3. Each step runs in order:
+1. The FlowRun entity is loaded and cached to avoid redundant lookups.
+2. The FlowRun status is updated to "running."
+3. A timeout timer starts based on `MaxExecutionTime`.
+4. Each step runs in order:
    - A NodeLog record is created (status = running).
+   - If the step has a `ProgressMessage`, it is persisted to the run record.
    - The step's `ExecuteAsync` method runs.
    - The NodeLog is updated (status = completed or failed).
-   - The progress counter increments.
+   - On success, the progress counter increments. On failure with **Continue** strategy, the counter also increments. On failure with **Stop** strategy, the flow aborts without incrementing.
    - If a step fails: **Stop** aborts the flow, **Continue** skips to the next step.
-4. The flow's status and error (if any) are saved to the context.
-5. The final status is committed to the database.
-6. Lifecycle event handlers execute (OnSuccess or OnFail, then OnFinish).
+5. The flow's status and error (if any) are saved to the context.
+6. The final status is committed to the database.
+7. Lifecycle event handlers execute with a fresh timeout (OnSuccess or OnFail, then OnFinish).
