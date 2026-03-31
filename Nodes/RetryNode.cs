@@ -8,7 +8,10 @@ namespace Bikiran.Engine.Nodes;
 public class RetryNode : IFlowNode
 {
     public string Name { get; }
-    public string NodeType => "Retry";
+    public FlowNodeType NodeType => FlowNodeType.Retry;
+
+    /// <inheritdoc />
+    public string? ProgressMessage { get; set; }
 
     /// <summary>The node to wrap and retry.</summary>
     public required IFlowNode Inner { get; set; }
@@ -30,7 +33,11 @@ public class RetryNode : IFlowNode
     /// </summary>
     public double BackoffMultiplier { get; set; } = 1.0;
 
-    public RetryNode(string name) => Name = name;
+    public RetryNode(string name)
+    {
+        FlowNodeNameValidator.Validate(name);
+        Name = name;
+    }
 
     public async Task<NodeResult> ExecuteAsync(FlowContext context, CancellationToken cancellationToken)
     {

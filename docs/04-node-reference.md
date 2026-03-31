@@ -4,9 +4,84 @@ Nodes are the building blocks of every flow. Each node performs one task — mak
 
 ---
 
+## Node Type Enum
+
+Every node has a `NodeType` property that returns a value from the `FlowNodeType` enum:
+
+```csharp
+public enum FlowNodeType
+{
+    Wait,
+    HttpRequest,
+    EmailSend,
+    IfElse,
+    WhileLoop,
+    DatabaseQuery,
+    Transform,
+    Retry,
+    Parallel,
+    Custom          // For user-defined custom nodes
+}
+```
+
+---
+
+## Naming Rules
+
+All node names **must** follow PascalCase convention:
+
+- Start with an uppercase letter
+- No spaces or special characters
+- Only letters and digits
+
+Examples: `FetchOrder`, `SendEmail`, `CheckDnsStatus`
+
+Invalid names throw an `ArgumentException` at construction time:
+
+```csharp
+// Valid
+new WaitNode("PauseBeforeRetry");
+
+// Invalid — throws ArgumentException
+new WaitNode("pause_before_retry");
+new WaitNode("Pause Before Retry");
+```
+
+---
+
+## Progress Messages
+
+Every node has an optional `ProgressMessage` property. When set, this message is persisted to the `FlowRun.CurrentProgressMessage` column while the node is executing. This is useful for long-running background flows where you want to show users what step is currently happening.
+
+```csharp
+new WaitNode("DnsPropagation") {
+    DelayMs = 30000,
+    ProgressMessage = "Waiting for DNS propagation"
+}
+```
+
+The progress message is available through the `/runs/{serviceId}/progress` and `/runs/{serviceId}` API endpoints as `currentProgressMessage`.
+
+When the node completes and the flow moves to the next node, the progress message is updated to the next node's message (or cleared if none is set).
+
+---
+
+## OutputKey Auto-Generation
+
+Nodes that produce output (HttpRequestNode, DatabaseQueryNode, TransformNode) auto-generate their `OutputKey` as `"{Name}_Result"`. You do not need to set it manually unless you want a custom key.
+
+```csharp
+// OutputKey will be "FetchOrder_Result" automatically
+new HttpRequestNode("FetchOrder") {
+    Url = "https://api.example.com/order/123"
+}
+```
+
+---
+
 ## At a Glance
 
-| Node                                    | Type Label      | What It Does                                |
+| Node                                    | NodeType Enum   | What It Does                                |
 | --------------------------------------- | --------------- | ------------------------------------------- |
 | [WaitNode](#waitnode)                   | `Wait`          | Pause execution for a set duration          |
 | [HttpRequestNode](#httprequestnode)     | `HttpRequest`   | Make an outbound HTTP call                  |
@@ -26,15 +101,16 @@ Pauses the flow for a specified number of milliseconds.
 
 **Properties:**
 
-| Property  | Type   | Default  | Description          |
-| --------- | ------ | -------- | -------------------- |
-| `Name`    | string | required | Step name            |
-| `DelayMs` | int    | `1000`   | Milliseconds to wait |
+| Property         | Type   | Default  | Description          |
+| ---------------- | ------ | -------- | -------------------- |
+| `Name`           | string | required | Step name (PascalCase) |
+| `ProgressMessage`| string?| null     | Progress message shown during execution |
+| `DelayMs`        | int    | `1000`   | Milliseconds to wait |
 
 **Example:**
 
 ```csharp
-new WaitNode("pause_before_retry") { DelayMs = 3000 }
+new WaitNode("PauseBeforeRetry") { DelayMs = 3000 }
 ```
 
 ---
@@ -47,7 +123,8 @@ Makes an outbound HTTP request with built-in retry support.
 
 | Property            | Type                         | Default             | Description                                     |
 | ------------------- | ---------------------------- | ------------------- | ----------------------------------------------- |
-| `Name`              | string                       | required            | Step name                                       |
+| `Name`              | string                       | required            | Step name (PascalCase)                          |
+| `ProgressMessage`   | string?                      | null                | Progress message shown during execution         |
 | `Url`               | string                       | required            | Target URL                                      |
 | `Method`            | HttpMethod                   | `GET`               | HTTP method                                     |
 | `Headers`           | Dictionary\<string, string\> | empty               | Extra request headers                           |
@@ -55,7 +132,7 @@ Makes an outbound HTTP request with built-in retry support.
 | `TimeoutSeconds`    | int                          | `30`                | Timeout per attempt                             |
 | `MaxRetries`        | int                          | `3`                 | Number of retry attempts                        |
 | `RetryDelaySeconds` | int                          | `2`                 | Seconds between retries                         |
-| `OutputKey`         | string                       | `"{Name}_response"` | Context key where the response is stored        |
+| `OutputKey`         | string                       | `"{Name}_Result"`  | Context key where the response is stored        |
 | `ExpectStatusCode`  | int?                         | null                | If set, non-matching status codes cause failure |
 | `ExpectValue`       | string?                      | null                | JSON validation expression on the response      |
 
@@ -69,11 +146,10 @@ Makes an outbound HTTP request with built-in retry support.
 **Example:**
 
 ```csharp
-new HttpRequestNode("fetch_order") {
+new HttpRequestNode("FetchOrder") {
     Url = "https://api.example.com/order/123",
     Method = HttpMethod.Get,
-    MaxRetries = 3,
-    OutputKey = "order_data"
+    MaxRetries = 3
 }
 ```
 
@@ -85,16 +161,14 @@ Supported operators: `>=`, `<=`, `>`, `<`, `==`, `!=`, `&&`, `||`
 
 ```csharp
 // Check that the response amount is at least 100
-new HttpRequestNode("verify_payment") {
+new HttpRequestNode("VerifyPayment") {
     Url = "https://api.example.com/payment/123",
-    OutputKey = "payment_data",
     ExpectValue = "$val.data.amount >= 100 && $val.data.name == \"Bikiran\""
 }
 
 // Simple status check
-new HttpRequestNode("check_status") {
+new HttpRequestNode("CheckStatus") {
     Url = "https://api.example.com/health",
-    OutputKey = "health_result",
     ExpectValue = "$val.status == \"ok\""
 }
 ```
@@ -111,7 +185,8 @@ Sends an email using a registered SMTP credential or the application's email ser
 
 | Property              | Type                                               | Default  | Description                                   |
 | --------------------- | -------------------------------------------------- | -------- | --------------------------------------------- |
-| `Name`                | string                                             | required | Step name                                     |
+| `Name`                | string                                             | required | Step name (PascalCase)                        |
+| `ProgressMessage`     | string?                                            | null     | Progress message shown during execution       |
 | `ToEmail`             | string                                             | required | Recipient email address                       |
 | `ToName`              | string                                             | `""`     | Recipient display name                        |
 | `Subject`             | string                                             | required | Email subject                                 |
@@ -138,7 +213,7 @@ At least one body source must be provided.
 
 ```csharp
 // Using a template
-new EmailSendNode("notify_customer") {
+new EmailSendNode("NotifyCustomer") {
     ToEmail = "user@example.com",
     ToName = "John",
     Subject = "Order Confirmed",
@@ -147,7 +222,7 @@ new EmailSendNode("notify_customer") {
 }
 
 // Using raw HTML with a credential
-new EmailSendNode("send_invoice") {
+new EmailSendNode("SendInvoice") {
     CredentialName = "smtp_primary",
     ToEmail = "user@example.com",
     Subject = "Your Invoice",
@@ -155,7 +230,7 @@ new EmailSendNode("send_invoice") {
 }
 
 // Using dynamic HTML built from context
-new EmailSendNode("send_report") {
+new EmailSendNode("SendReport") {
     ToEmail = "admin@example.com",
     Subject = "Daily Report",
     HtmlBodyResolver = ctx =>
@@ -173,7 +248,8 @@ Evaluates a condition and runs one of two branches.
 
 | Property      | Type                      | Description                            |
 | ------------- | ------------------------- | -------------------------------------- |
-| `Name`        | string                    | Step name                              |
+| `Name`        | string                    | Step name (PascalCase)                 |
+| `ProgressMessage` | string?               | Progress message shown during execution |
 | `Condition`   | Func\<FlowContext, bool\> | The condition to evaluate              |
 | `TrueBranch`  | List\<IFlowNode\>         | Steps to run if the condition is true  |
 | `FalseBranch` | List\<IFlowNode\>         | Steps to run if the condition is false |
@@ -188,13 +264,13 @@ Evaluates a condition and runs one of two branches.
 **Example:**
 
 ```csharp
-new IfElseNode("check_status") {
+new IfElseNode("CheckStatus") {
     Condition = ctx => ctx.Get<string>("order_data") != null,
     TrueBranch = [
-        new EmailSendNode("send_confirmation") { /* ... */ }
+        new EmailSendNode("SendConfirmation") { /* ... */ }
     ],
     FalseBranch = [
-        new WaitNode("wait_and_retry") { DelayMs = 5000 }
+        new WaitNode("WaitAndRetry") { DelayMs = 5000 }
     ]
 }
 ```
@@ -209,7 +285,8 @@ Repeats a set of steps while a condition remains true.
 
 | Property           | Type                      | Default  | Description                             |
 | ------------------ | ------------------------- | -------- | --------------------------------------- |
-| `Name`             | string                    | required | Step name                               |
+| `Name`             | string                    | required | Step name (PascalCase)                  |
+| `ProgressMessage`  | string?                   | null     | Progress message shown during execution |
 | `Condition`        | Func\<FlowContext, bool\> | required | Continue while this returns true        |
 | `Body`             | List\<IFlowNode\>         | required | Steps to run each iteration             |
 | `MaxIterations`    | int                       | `10`     | Hard cap to prevent infinite loops      |
@@ -225,14 +302,13 @@ Repeats a set of steps while a condition remains true.
 **Example:**
 
 ```csharp
-new WhileLoopNode("poll_status") {
+new WhileLoopNode("PollStatus") {
     Condition = ctx => ctx.Get<string>("status") != "ready",
     Body = [
-        new HttpRequestNode("check_status") {
-            Url = "https://api.example.com/status",
-            OutputKey = "status"
+        new HttpRequestNode("CheckStatus") {
+            Url = "https://api.example.com/status"
         },
-        new WaitNode("poll_delay") { DelayMs = 5000 }
+        new WaitNode("PollDelay") { DelayMs = 5000 }
     ],
     MaxIterations = 12
 }
@@ -248,9 +324,10 @@ Runs an EF Core query against your application's database and stores the result 
 
 | Property           | Type                                                 | Default                 | Description                              |
 | ------------------ | ---------------------------------------------------- | ----------------------- | ---------------------------------------- |
-| `Name`             | string                                               | required                | Step name                                |
+| `Name`             | string                                               | required                | Step name (PascalCase)                   |
+| `ProgressMessage`  | string?                                              | null                    | Progress message shown during execution  |
 | `Query`            | Func\<TContext, CancellationToken, Task\<object?\>\> | required                | The EF Core query to run                 |
-| `OutputKey`        | string                                               | `"{Name}_result"`       | Context key for the result               |
+| `OutputKey`        | string                                               | `"{Name}_Result"`       | Context key for the result               |
 | `FailIfNull`       | bool                                                 | `false`                 | Return failure if the query returns null |
 | `NullErrorMessage` | string                                               | `"Query returned null"` | Error message when failing on null       |
 
@@ -261,11 +338,10 @@ Runs an EF Core query against your application's database and stores the result 
 **Example:**
 
 ```csharp
-new DatabaseQueryNode<AppDbContext>("fetch_subscription") {
+new DatabaseQueryNode<AppDbContext>("FetchSubscription") {
     Query = async (db, ct) => await db.Subscription
         .Where(s => s.Id == subscriptionId && s.TimeDeleted == 0)
         .FirstOrDefaultAsync(ct),
-    OutputKey = "subscription",
     FailIfNull = true,
     NullErrorMessage = "Subscription not found"
 }
@@ -281,10 +357,11 @@ Reshapes or derives new values from existing context data. Does not make any ext
 
 | Property           | Type                                                     | Default           | Description                                |
 | ------------------ | -------------------------------------------------------- | ----------------- | ------------------------------------------ |
-| `Name`             | string                                                   | required          | Step name                                  |
+| `Name`             | string                                                   | required          | Step name (PascalCase)                     |
+| `ProgressMessage`  | string?                                                  | null              | Progress message shown during execution    |
 | `Transform`        | Func\<FlowContext, object?\>?                            | null              | Synchronous transform function             |
 | `TransformAsync`   | Func\<FlowContext, CancellationToken, Task\<object?\>\>? | null              | Asynchronous transform function            |
-| `OutputKey`        | string                                                   | `"{Name}_output"` | Context key for the result                 |
+| `OutputKey`        | string                                                   | `"{Name}_Result"` | Context key for the result                 |
 | `SkipIfNullOutput` | bool                                                     | `true`            | Skip storing the key if the result is null |
 
 Provide either `Transform` or `TransformAsync` (not both). If both are set, `TransformAsync` takes priority.
@@ -292,12 +369,11 @@ Provide either `Transform` or `TransformAsync` (not both). If both are set, `Tra
 **Example:**
 
 ```csharp
-new TransformNode("build_message") {
+new TransformNode("BuildMessage") {
     Transform = ctx => {
         var sub = ctx.Get<Subscription>("subscription");
         return $"Your subscription #{sub?.Id} expires on {sub?.ExpiryDate}.";
-    },
-    OutputKey = "reminder_message"
+    }
 }
 ```
 
@@ -311,7 +387,8 @@ Wraps any node and retries it on failure with configurable delay and backoff.
 
 | Property            | Type                      | Default  | Description                                                    |
 | ------------------- | ------------------------- | -------- | -------------------------------------------------------------- |
-| `Name`              | string                    | required | Step name                                                      |
+| `Name`              | string                    | required | Step name (PascalCase)                                         |
+| `ProgressMessage`   | string?                   | null     | Progress message shown during execution                        |
 | `Inner`             | IFlowNode                 | required | The node to wrap                                               |
 | `MaxAttempts`       | int                       | `3`      | Total attempts (1 means no retry)                              |
 | `DelayMs`           | int                       | `2000`   | Base delay between attempts in milliseconds                    |
@@ -321,10 +398,9 @@ Wraps any node and retries it on failure with configurable delay and backoff.
 **Example:**
 
 ```csharp
-new RetryNode("retry_payment") {
-    Inner = new HttpRequestNode("verify_payment") {
-        Url = "https://api.sslcommerz.com/validator/...",
-        OutputKey = "payment_result"
+new RetryNode("RetryPayment") {
+    Inner = new HttpRequestNode("VerifyPayment") {
+        Url = "https://api.sslcommerz.com/validator/..."
     },
     MaxAttempts = 4,
     DelayMs = 3000,
@@ -342,7 +418,8 @@ Runs multiple branches at the same time using `Task.WhenAll`.
 
 | Property               | Type                      | Default  | Description                             |
 | ---------------------- | ------------------------- | -------- | --------------------------------------- |
-| `Name`                 | string                    | required | Step name                               |
+| `Name`                 | string                    | required | Step name (PascalCase)                  |
+| `ProgressMessage`      | string?                   | null     | Progress message shown during execution |
 | `Branches`             | List\<List\<IFlowNode\>\> | required | Each inner list is one parallel branch  |
 | `WaitAll`              | bool                      | `true`   | Wait for all branches before continuing |
 | `AbortOnBranchFailure` | bool                      | `false`  | Cancel remaining branches if one fails  |
@@ -352,10 +429,10 @@ Runs multiple branches at the same time using `Task.WhenAll`.
 **Example:**
 
 ```csharp
-new ParallelNode("multi_channel_notify") {
+new ParallelNode("MultiChannelNotify") {
     Branches = [
-        [new EmailSendNode("email") { /* ... */ }],
-        [new HttpRequestNode("webhook") { /* ... */ }]
+        [new EmailSendNode("Email") { /* ... */ }],
+        [new HttpRequestNode("Webhook") { /* ... */ }]
     ],
     AbortOnBranchFailure = false
 }

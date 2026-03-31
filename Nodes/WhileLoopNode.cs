@@ -8,7 +8,10 @@ namespace Bikiran.Engine.Nodes;
 public class WhileLoopNode : IFlowNode
 {
     public string Name { get; }
-    public string NodeType => "WhileLoop";
+    public FlowNodeType NodeType => FlowNodeType.WhileLoop;
+
+    /// <inheritdoc />
+    public string? ProgressMessage { get; set; }
 
     /// <summary>Continue iterating while this returns true.</summary>
     public required Func<FlowContext, bool> Condition { get; set; }
@@ -22,7 +25,11 @@ public class WhileLoopNode : IFlowNode
     /// <summary>Milliseconds to wait between iterations. Default is 0.</summary>
     public int IterationDelayMs { get; set; }
 
-    public WhileLoopNode(string name) => Name = name;
+    public WhileLoopNode(string name)
+    {
+        FlowNodeNameValidator.Validate(name);
+        Name = name;
+    }
 
     public async Task<NodeResult> ExecuteAsync(FlowContext context, CancellationToken cancellationToken)
     {

@@ -10,12 +10,15 @@ namespace Bikiran.Engine.Nodes;
 public class DatabaseQueryNode<TContext> : IFlowNode where TContext : DbContext
 {
     public string Name { get; }
-    public string NodeType => "DatabaseQuery";
+    public FlowNodeType NodeType => FlowNodeType.DatabaseQuery;
+
+    /// <inheritdoc />
+    public string? ProgressMessage { get; set; }
 
     /// <summary>The EF Core query to execute. Receives the typed DbContext and a CancellationToken.</summary>
     public required Func<TContext, CancellationToken, Task<object?>> Query { get; set; }
 
-    /// <summary>Context key where the query result is stored. Defaults to "{Name}_result".</summary>
+    /// <summary>Context key where the query result is stored. Defaults to "{Name}_Result".</summary>
     public string? OutputKey { get; set; }
 
     /// <summary>When true, the node fails if the query returns null. Default is false.</summary>
@@ -24,11 +27,15 @@ public class DatabaseQueryNode<TContext> : IFlowNode where TContext : DbContext
     /// <summary>Error message used when FailIfNull is true and the query returns null.</summary>
     public string NullErrorMessage { get; set; } = "Query returned null";
 
-    public DatabaseQueryNode(string name) => Name = name;
+    public DatabaseQueryNode(string name)
+    {
+        FlowNodeNameValidator.Validate(name);
+        Name = name;
+    }
 
     public async Task<NodeResult> ExecuteAsync(FlowContext context, CancellationToken cancellationToken)
     {
-        var outputKey = OutputKey ?? $"{Name}_result";
+        var outputKey = OutputKey ?? $"{Name}_Result";
 
         // Try the explicitly-set DbContext first, then fall back to DI resolution.
         var db = context.DbContext as TContext ?? context.GetDbContext<TContext>();

@@ -19,18 +19,19 @@ var serviceId = await FlowBuilder
     .WithContext(ctx => {
         ctx.HttpContext = HttpContext;
     })
-    .AddNode(new HttpRequestNode("fetch_order") {
+    .AddNode(new HttpRequestNode("FetchOrder") {
         Url = "https://api.example.com/order/123",
         Method = HttpMethod.Get,
         MaxRetries = 3,
-        OutputKey = "order_data"
+        ProgressMessage = "Fetching order details"
     })
-    .AddNode(new EmailSendNode("notify_customer") {
+    .AddNode(new EmailSendNode("NotifyCustomer") {
         ToEmail = "customer@example.com",
         ToName = "Jane Doe",
         Subject = "Order Confirmed",
         Template = "ORDER_CREATE",
-        Placeholders = new() { { "OrderId", "123" } }
+        Placeholders = new() { { "OrderId", "123" } },
+        ProgressMessage = "Sending confirmation email"
     })
     .StartAsync();
 ```
@@ -44,24 +45,22 @@ Load a record from the database and take different paths based on whether it exi
 ```csharp
 var serviceId = await FlowBuilder
     .Create("user_lookup_flow")
-    .AddNode(new DatabaseQueryNode<AppDbContext>("find_user") {
+    .AddNode(new DatabaseQueryNode<AppDbContext>("FindUser") {
         Query = async (db, ct) => await db.UserProfile
             .FirstOrDefaultAsync(u => u.Email == email && u.TimeDeleted == 0, ct),
-        OutputKey = "existing_user",
         FailIfNull = false
     })
-    .AddNode(new IfElseNode("user_exists_check") {
+    .AddNode(new IfElseNode("UserExistsCheck") {
         Condition = ctx =>
-            ctx.Has("existing_user") &&
-            ctx.Get<UserProfile>("existing_user") != null,
+            ctx.Has("FindUser_Result") &&
+            ctx.Get<UserProfile>("FindUser_Result") != null,
         TrueBranch = [
-            new TransformNode("use_existing_user") {
-                Transform = ctx => ctx.Get<UserProfile>("existing_user")!.Id,
-                OutputKey = "user_id"
+            new TransformNode("UseExistingUser") {
+                Transform = ctx => ctx.Get<UserProfile>("FindUser_Result")!.Id
             }
         ],
         FalseBranch = [
-            new WaitNode("placeholder") { DelayMs = 100 }
+            new WaitNode("Placeholder") { DelayMs = 100 }
         ]
     })
     .StartAsync();
@@ -76,26 +75,24 @@ Load a subscription, build a message from it, and send an email:
 ```csharp
 var serviceId = await FlowBuilder
     .Create("subscription_reminder")
-    .AddNode(new DatabaseQueryNode<AppDbContext>("fetch_subscription") {
+    .AddNode(new DatabaseQueryNode<AppDbContext>("FetchSubscription") {
         Query = async (db, ct) => await db.Subscription
             .Where(s => s.Id == subscriptionId && s.TimeDeleted == 0)
             .FirstOrDefaultAsync(ct),
-        OutputKey = "subscription",
         FailIfNull = true,
         NullErrorMessage = "Subscription not found"
     })
-    .AddNode(new TransformNode("build_message") {
+    .AddNode(new TransformNode("BuildMessage") {
         Transform = ctx => {
-            var sub = ctx.Get<Subscription>("subscription");
+            var sub = ctx.Get<Subscription>("FetchSubscription_Result");
             return $"Your subscription #{sub?.Id} is active until {sub?.ExpiryDate}.";
-        },
-        OutputKey = "reminder_message"
+        }
     })
-    .AddNode(new EmailSendNode("send_reminder") {
+    .AddNode(new EmailSendNode("SendReminder") {
         ToEmail = userEmail,
         Subject = "Subscription Reminder",
         HtmlBodyResolver = ctx =>
-            $"<p>{ctx.Get<string>("reminder_message")}</p>"
+            $"<p>{ctx.Get<string>("BuildMessage_Result")}</p>"
     })
     .StartAsync();
 ```
@@ -107,17 +104,17 @@ var serviceId = await FlowBuilder
 Wrap an unreliable HTTP call with automatic retries and increasing delays:
 
 ```csharp
-.AddNode(new RetryNode("retry_payment_verify") {
-    Inner = new HttpRequestNode("payment_verify") {
+.AddNode(new RetryNode("RetryPaymentVerify") {
+    Inner = new HttpRequestNode("PaymentVerify") {
         Url = "https://api.sslcommerz.com/validator/api/validationserverAPI.php",
         Method = HttpMethod.Get,
-        MaxRetries = 1,
-        OutputKey = "payment_result"
+        MaxRetries = 1
     },
     MaxAttempts = 4,
     DelayMs = 3000,
     BackoffMultiplier = 2.0,   // delays: 3s → 6s → 12s
-    RetryOn = result => !result.Success
+    RetryOn = result => !result.Success,
+    ProgressMessage = "Verifying payment with gateway"
 })
 ```
 
@@ -128,16 +125,16 @@ Wrap an unreliable HTTP call with automatic retries and increasing delays:
 Send notifications through multiple channels at the same time:
 
 ```csharp
-.AddNode(new ParallelNode("multi_channel_notify") {
+.AddNode(new ParallelNode("MultiChannelNotify") {
     Branches = [
         // Branch 1: Email
-        [new EmailSendNode("email_notify") {
+        [new EmailSendNode("EmailNotify") {
             ToEmail = userEmail,
             Subject = "Payment Confirmed",
             HtmlBody = "<h1>Payment Confirmed</h1><p>Your invoice has been paid.</p>"
         }],
         // Branch 2: Webhook
-        [new HttpRequestNode("webhook_notify") {
+        [new HttpRequestNode("WebhookNotify") {
             Url = "https://hooks.example.com/notify",
             Method = HttpMethod.Post,
             Body = $"{{\"invoiceId\": \"{invoiceId}\", \"status\": \"paid\"}}"
@@ -162,7 +159,7 @@ Content-Type: application/json
   "displayName": "Welcome Email Flow",
   "description": "Sends a welcome email to a new user after a brief delay",
   "tags": "auth,email,onboarding",
-  "flowJson": "{\"name\":\"welcome_email_flow\",\"config\":{\"maxExecutionTimeSeconds\":60,\"onFailure\":\"Continue\"},\"nodes\":[{\"type\":\"Wait\",\"name\":\"brief_delay\",\"params\":{\"delayMs\":500}},{\"type\":\"EmailSend\",\"name\":\"send_welcome\",\"params\":{\"toEmail\":\"{{email}}\",\"toName\":\"{{name}}\",\"subject\":\"Welcome!\",\"template\":\"AUTH_CREATE_ACCOUNT\",\"placeholders\":{\"DisplayName\":\"{{name}}\",\"Email\":\"{{email}}\"}}}]}"
+  "flowJson": "{\"name\":\"welcome_email_flow\",\"config\":{\"maxExecutionTimeSeconds\":60,\"onFailure\":\"Continue\"},\"nodes\":[{\"type\":\"Wait\",\"name\":\"BriefDelay\",\"params\":{\"delayMs\":500}},{\"type\":\"EmailSend\",\"name\":\"SendWelcome\",\"params\":{\"toEmail\":\"{{email}}\",\"toName\":\"{{name}}\",\"subject\":\"Welcome!\",\"template\":\"AUTH_CREATE_ACCOUNT\",\"placeholders\":{\"DisplayName\":\"{{name}}\",\"Email\":\"{{email}}\"},\"progressMessage\":\"Sending welcome email\"}}]}"
 }
 ```
 

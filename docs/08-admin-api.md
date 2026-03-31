@@ -146,6 +146,7 @@ Get full details of a single run including all step execution logs.
     "totalNodes": 4,
     "completedNodes": 4,
     "progressPercent": 100,
+    "currentProgressMessage": null,
     "durationMs": 3421,
     "startedAt": 1742000000,
     "completedAt": 1742000003,
@@ -153,7 +154,7 @@ Get full details of a single run including all step execution logs.
     "nodeLogs": [
       {
         "sequence": 1,
-        "nodeName": "fetch_order",
+        "nodeName": "FetchOrder",
         "nodeType": "HttpRequest",
         "status": "completed",
         "durationMs": 1200,
@@ -190,7 +191,8 @@ Get the current progress of a running (or completed) flow.
     "status": "running",
     "percent": 75,
     "completedNodes": 3,
-    "totalNodes": 4
+    "totalNodes": 4,
+    "currentProgressMessage": "Waiting for DNS propagation"
   }
 }
 ```

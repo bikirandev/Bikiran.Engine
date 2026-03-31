@@ -23,26 +23,27 @@ All tables are created automatically on first startup and updated automatically 
 
 Stores one record per workflow execution.
 
-| Column           | Type         | Default     | Description                                                 |
-| ---------------- | ------------ | ----------- | ----------------------------------------------------------- |
-| `Id`             | BIGINT (PK)  | auto        | Primary key                                                 |
-| `ServiceId`      | CHAR(36)     | —           | Unique run identifier (UUID)                                |
-| `FlowName`       | VARCHAR(100) | —           | Flow name                                                   |
-| `Status`         | VARCHAR(20)  | `"pending"` | `pending`, `running`, `completed`, `failed`, or `cancelled` |
-| `TriggerSource`  | VARCHAR(100) | `""`        | Where the flow was triggered from                           |
-| `Config`         | TEXT         | `"{}"`      | JSON-serialized runtime configuration                       |
-| `ContextMeta`    | TEXT         | `"{}"`      | JSON snapshot of caller context (IP, user ID, path)         |
-| `TotalNodes`     | INT          | `0`         | Total number of main steps (excludes lifecycle events)      |
-| `CompletedNodes` | INT          | `0`         | Number of main steps completed so far                       |
-| `ErrorMessage`   | VARCHAR(500) | NULL        | Error details if the flow failed                            |
-| `StartedAt`      | BIGINT       | `0`         | Unix timestamp when execution began                         |
-| `CompletedAt`    | BIGINT       | `0`         | Unix timestamp when execution finished                      |
-| `DurationMs`     | BIGINT       | `0`         | Total execution time in milliseconds                        |
-| `CreatorUserId`  | BIGINT       | `0`         | User who triggered the flow                                 |
-| `IpString`       | VARCHAR(100) | `""`        | IP address of the triggering request                        |
-| `TimeCreated`    | BIGINT       | —           | Record creation timestamp                                   |
-| `TimeUpdated`    | BIGINT       | —           | Last update timestamp                                       |
-| `TimeDeleted`    | BIGINT       | `0`         | Soft-delete timestamp (0 = active)                          |
+| Column                   | Type         | Default     | Description                                                 |
+| ------------------------ | ------------ | ----------- | ----------------------------------------------------------- |
+| `Id`                     | BIGINT (PK)  | auto        | Primary key                                                 |
+| `ServiceId`              | CHAR(36)     | —           | Unique run identifier (UUID)                                |
+| `FlowName`               | VARCHAR(100) | —           | Flow name                                                   |
+| `Status`                 | VARCHAR(20)  | `"pending"` | `pending`, `running`, `completed`, `failed`, or `cancelled` |
+| `TriggerSource`          | VARCHAR(100) | `""`        | Where the flow was triggered from                           |
+| `Config`                 | TEXT         | `"{}"`      | JSON-serialized runtime configuration                       |
+| `ContextMeta`            | TEXT         | `"{}"`      | JSON snapshot of caller context (IP, user ID, path)         |
+| `TotalNodes`             | INT          | `0`         | Total number of main steps (excludes lifecycle events)      |
+| `CompletedNodes`         | INT          | `0`         | Number of main steps completed so far                       |
+| `ErrorMessage`           | VARCHAR(500) | NULL        | Error details if the flow failed                            |
+| `CurrentProgressMessage` | VARCHAR(500) | NULL        | Progress message from the currently executing node          |
+| `StartedAt`              | BIGINT       | `0`         | Unix timestamp when execution began                         |
+| `CompletedAt`            | BIGINT       | `0`         | Unix timestamp when execution finished                      |
+| `DurationMs`             | BIGINT       | `0`         | Total execution time in milliseconds                        |
+| `CreatorUserId`          | BIGINT       | `0`         | User who triggered the flow                                 |
+| `IpString`               | VARCHAR(100) | `""`        | IP address of the triggering request                        |
+| `TimeCreated`            | BIGINT       | —           | Record creation timestamp                                   |
+| `TimeUpdated`            | BIGINT       | —           | Last update timestamp                                       |
+| `TimeDeleted`            | BIGINT       | `0`         | Soft-delete timestamp (0 = active)                          |
 
 ---
 

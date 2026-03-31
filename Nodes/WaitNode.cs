@@ -8,12 +8,19 @@ namespace Bikiran.Engine.Nodes;
 public class WaitNode : IFlowNode
 {
     public string Name { get; }
-    public string NodeType => "Wait";
+    public FlowNodeType NodeType => FlowNodeType.Wait;
+
+    /// <inheritdoc />
+    public string? ProgressMessage { get; set; }
 
     /// <summary>Duration to pause in milliseconds. Default is 1000 ms.</summary>
     public int DelayMs { get; set; } = 1000;
 
-    public WaitNode(string name) => Name = name;
+    public WaitNode(string name)
+    {
+        FlowNodeNameValidator.Validate(name);
+        Name = name;
+    }
 
     public async Task<NodeResult> ExecuteAsync(FlowContext context, CancellationToken cancellationToken)
     {

@@ -59,6 +59,7 @@ public class FlowRunsController : ControllerBase
                 run.TotalNodes,
                 run.CompletedNodes,
                 progressPercent,
+                run.CurrentProgressMessage,
                 run.DurationMs,
                 run.StartedAt,
                 run.CompletedAt,
@@ -80,7 +81,7 @@ public class FlowRunsController : ControllerBase
             ? (int)Math.Round((double)run.CompletedNodes / run.TotalNodes * 100)
             : 0;
 
-        return Ok(new { error = false, data = new { run.ServiceId, run.Status, percent, run.CompletedNodes, run.TotalNodes } });
+        return Ok(new { error = false, data = new { run.ServiceId, run.Status, percent, run.CompletedNodes, run.TotalNodes, run.CurrentProgressMessage } });
     }
 
     /// <summary>Filter runs by status.</summary>

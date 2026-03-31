@@ -44,6 +44,10 @@ public class FlowRun
     [MaxLength(500)]
     public string? ErrorMessage { get; set; }
 
+    /// <summary>Progress message from the currently executing node.</summary>
+    [MaxLength(500)]
+    public string? CurrentProgressMessage { get; set; }
+
     public long StartedAt { get; set; }
     public long CompletedAt { get; set; }
     public long DurationMs { get; set; }

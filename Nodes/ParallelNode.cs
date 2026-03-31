@@ -10,7 +10,10 @@ namespace Bikiran.Engine.Nodes;
 public class ParallelNode : IFlowNode
 {
     public string Name { get; }
-    public string NodeType => "Parallel";
+    public FlowNodeType NodeType => FlowNodeType.Parallel;
+
+    /// <inheritdoc />
+    public string? ProgressMessage { get; set; }
 
     /// <summary>
     /// List of branches to run concurrently. Each inner list is one parallel branch.
@@ -25,7 +28,11 @@ public class ParallelNode : IFlowNode
     /// <summary>When true, cancels remaining branches if any branch fails. Default is false.</summary>
     public bool AbortOnBranchFailure { get; set; }
 
-    public ParallelNode(string name) => Name = name;
+    public ParallelNode(string name)
+    {
+        FlowNodeNameValidator.Validate(name);
+        Name = name;
+    }
 
     public async Task<NodeResult> ExecuteAsync(FlowContext context, CancellationToken cancellationToken)
     {

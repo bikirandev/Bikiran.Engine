@@ -9,7 +9,10 @@ namespace Bikiran.Engine.Nodes;
 public class IfElseNode : IFlowNode
 {
     public string Name { get; }
-    public string NodeType => "IfElse";
+    public FlowNodeType NodeType => FlowNodeType.IfElse;
+
+    /// <inheritdoc />
+    public string? ProgressMessage { get; set; }
 
     /// <summary>The condition to evaluate against the current flow context.</summary>
     public required Func<FlowContext, bool> Condition { get; set; }
@@ -20,7 +23,11 @@ public class IfElseNode : IFlowNode
     /// <summary>Steps to run when the condition is false.</summary>
     public List<IFlowNode> FalseBranch { get; set; } = new();
 
-    public IfElseNode(string name) => Name = name;
+    public IfElseNode(string name)
+    {
+        FlowNodeNameValidator.Validate(name);
+        Name = name;
+    }
 
     public async Task<NodeResult> ExecuteAsync(FlowContext context, CancellationToken cancellationToken)
     {

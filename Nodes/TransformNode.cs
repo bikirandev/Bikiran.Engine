@@ -9,7 +9,10 @@ namespace Bikiran.Engine.Nodes;
 public class TransformNode : IFlowNode
 {
     public string Name { get; }
-    public string NodeType => "Transform";
+    public FlowNodeType NodeType => FlowNodeType.Transform;
+
+    /// <inheritdoc />
+    public string? ProgressMessage { get; set; }
 
     /// <summary>Synchronous transform function.</summary>
     public Func<FlowContext, object?>? Transform { get; set; }
@@ -17,17 +20,21 @@ public class TransformNode : IFlowNode
     /// <summary>Asynchronous transform function. Takes priority over Transform if both are set.</summary>
     public Func<FlowContext, CancellationToken, Task<object?>>? TransformAsync { get; set; }
 
-    /// <summary>Context key where the result is stored. Defaults to "{Name}_output".</summary>
+    /// <summary>Context key where the result is stored. Defaults to "{Name}_Result".</summary>
     public string? OutputKey { get; set; }
 
     /// <summary>When true (default), null results are not written to context.</summary>
     public bool SkipIfNullOutput { get; set; } = true;
 
-    public TransformNode(string name) => Name = name;
+    public TransformNode(string name)
+    {
+        FlowNodeNameValidator.Validate(name);
+        Name = name;
+    }
 
     public async Task<NodeResult> ExecuteAsync(FlowContext context, CancellationToken cancellationToken)
     {
-        var outputKey = OutputKey ?? $"{Name}_output";
+        var outputKey = OutputKey ?? $"{Name}_Result";
 
         object? result;
 

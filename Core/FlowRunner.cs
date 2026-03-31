@@ -53,6 +53,9 @@ internal class FlowRunner
                 if (context.Config.EnableNodeLogging)
                     await CreateNodeLogAsync(context.ServiceId, node, sequence, FlowNodeStatus.Running, nodeStartedAt);
 
+                // Persist the node's progress message to the run record
+                await UpdateRunProgressMessageAsync(context.ServiceId, node.ProgressMessage);
+
                 NodeResult result;
                 string? branchTaken = null;
                 int retryCount = 0;
@@ -95,7 +98,7 @@ internal class FlowRunner
                 if (result.Success)
                 {
                     completedNodes++;
-                    await UpdateRunProgressAsync(context.ServiceId, completedNodes);
+                    await UpdateRunProgressAsync(context.ServiceId, completedNodes, progressMessage: null);
                 }
                 else
                 {
@@ -106,7 +109,7 @@ internal class FlowRunner
                     }
                     // OnFailureAction.Continue: log the failure but keep going
                     completedNodes++;
-                    await UpdateRunProgressAsync(context.ServiceId, completedNodes);
+                    await UpdateRunProgressAsync(context.ServiceId, completedNodes, progressMessage: null);
                 }
             }
         }
@@ -225,6 +228,7 @@ internal class FlowRunner
         if (run == null) return;
 
         run.Status = status.ToString().ToLowerInvariant();
+        run.CurrentProgressMessage = null;
         run.TimeUpdated = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
 
         if (startedAt.HasValue) run.StartedAt = startedAt.Value;
@@ -235,7 +239,7 @@ internal class FlowRunner
         await _db.SaveChangesAsync();
     }
 
-    private async Task UpdateRunProgressAsync(string serviceId, int completedNodes)
+    private async Task UpdateRunProgressAsync(string serviceId, int completedNodes, string? progressMessage = null)
     {
         if (_db == null) return;
 
@@ -243,6 +247,19 @@ internal class FlowRunner
         if (run == null) return;
 
         run.CompletedNodes = completedNodes;
+        run.CurrentProgressMessage = progressMessage;
+        run.TimeUpdated = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        await _db.SaveChangesAsync();
+    }
+
+    private async Task UpdateRunProgressMessageAsync(string serviceId, string? progressMessage)
+    {
+        if (_db == null || progressMessage == null) return;
+
+        var run = await _db.FlowRun.FirstOrDefaultAsync(r => r.ServiceId == serviceId);
+        if (run == null) return;
+
+        run.CurrentProgressMessage = progressMessage;
         run.TimeUpdated = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
         await _db.SaveChangesAsync();
     }
@@ -255,7 +272,7 @@ internal class FlowRunner
         {
             ServiceId = serviceId,
             NodeName = node.Name,
-            NodeType = node.NodeType,
+            NodeType = node.NodeType.ToString(),
             Sequence = sequence,
             Status = status.ToString().ToLowerInvariant(),
             StartedAt = startedAtMs / 1000,

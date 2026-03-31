@@ -14,10 +14,10 @@ namespace Bikiran.Engine.Database.Migration;
 public class SchemaMigrator
 {
     /// <summary>Current schema version embedded in this package version.</summary>
-    public const string CurrentSchemaVersion = "1.4.0";
+    public const string CurrentSchemaVersion = "1.5.0";
 
     /// <summary>NuGet package version.</summary>
-    public const string PackageVersion = "1.4.0";
+    public const string PackageVersion = "1.5.0";
 
     private readonly EngineDbContext _db;
     private readonly ILogger<SchemaMigrator>? _logger;
@@ -132,6 +132,7 @@ public class SchemaMigrator
                 `TotalNodes` int NOT NULL DEFAULT 0,
                 `CompletedNodes` int NOT NULL DEFAULT 0,
                 `ErrorMessage` varchar(500) NULL,
+                `CurrentProgressMessage` varchar(500) NULL,
                 `StartedAt` bigint NOT NULL DEFAULT 0,
                 `CompletedAt` bigint NOT NULL DEFAULT 0,
                 `DurationMs` bigint NOT NULL DEFAULT 0,
@@ -287,6 +288,33 @@ public class SchemaMigrator
             }
 
             _logger?.LogInformation("Bikiran.Engine: Applied migration to 1.1.0 (ParameterSchema column).");
+        }
+
+        // Migration: 1.4.x → 1.5.0: Add CurrentProgressMessage column to FlowRun
+        if (string.Compare(current.SchemaVersion, "1.5.0", StringComparison.Ordinal) < 0)
+        {
+            var providerName2 = _db.Database.ProviderName ?? "";
+            var isMySql2 = providerName2.Contains("MySql", StringComparison.OrdinalIgnoreCase) ||
+                           providerName2.Contains("Pomelo", StringComparison.OrdinalIgnoreCase);
+
+            if (isMySql2)
+            {
+                await ExecuteSilentAsync("""
+                    SET @col_exists = (
+                        SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS
+                        WHERE TABLE_NAME = 'FlowRun' AND COLUMN_NAME = 'CurrentProgressMessage'
+                        AND TABLE_SCHEMA = DATABASE()
+                    );
+                    SET @sql = IF(@col_exists = 0,
+                        'ALTER TABLE `FlowRun` ADD COLUMN `CurrentProgressMessage` varchar(500) NULL AFTER `ErrorMessage`',
+                        'SELECT 1');
+                    PREPARE stmt FROM @sql;
+                    EXECUTE stmt;
+                    DEALLOCATE PREPARE stmt;
+                    """);
+            }
+
+            _logger?.LogInformation("Bikiran.Engine: Applied migration to 1.5.0 (CurrentProgressMessage column).");
         }
     }
 }

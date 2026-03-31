@@ -8,12 +8,12 @@ Flows are built using the `FlowBuilder` class. It provides a step-by-step method
 
 ```csharp
 var serviceId = await FlowBuilder
-    .Create("flow_name")                               // 1. Name the flow
-    .Configure(cfg => { /* runtime settings */ })       // 2. Set timeout, failure handling, etc.
-    .WithContext(ctx => { /* provide services */ })      // 3. Provide HTTP context, logger, etc.
-    .AddNode(new WaitNode("step_1") { DelayMs = 500 })  // 4. Add steps in order
-    .AddNode(new HttpRequestNode("step_2") { /* ... */ })
-    .StartAsync();                                      // 5. Start and get the run ID
+    .Create("flow_name")                                   // 1. Name the flow
+    .Configure(cfg => { /* runtime settings */ })           // 2. Set timeout, failure handling, etc.
+    .WithContext(ctx => { /* provide services */ })          // 3. Provide HTTP context, logger, etc.
+    .AddNode(new WaitNode("Step1") { DelayMs = 500 })       // 4. Add steps in order (PascalCase names)
+    .AddNode(new HttpRequestNode("Step2") { /* ... */ })
+    .StartAsync();                                          // 5. Start and get the run ID
 ```
 
 ---
@@ -166,19 +166,22 @@ Lifecycle events let you run steps after the main flow completes. This is useful
 ```csharp
 var serviceId = await FlowBuilder
     .Create("provision_domain")
-    .AddNode(new HttpRequestNode("add_dns") { /* ... */ })
-    .AddNode(new WaitNode("propagation_delay") { DelayMs = 15000 })
-    .OnSuccess(new HttpRequestNode("notify_success") {
+    .AddNode(new HttpRequestNode("AddDns") { /* ... */ })
+    .AddNode(new WaitNode("PropagationDelay") {
+        DelayMs = 15000,
+        ProgressMessage = "Waiting for DNS propagation"
+    })
+    .OnSuccess(new HttpRequestNode("NotifySuccess") {
         Url = "https://api.example.com/webhook/success",
         Method = HttpMethod.Post,
         Body = "{\"status\": \"ok\"}"
     })
-    .OnFail(new EmailSendNode("alert_admin") {
+    .OnFail(new EmailSendNode("AlertAdmin") {
         ToEmail = "admin@example.com",
         Subject = "Domain provisioning failed",
         HtmlBodyResolver = ctx => $"<p>Error: {ctx.FlowError}</p>"
     })
-    .OnFinish(new HttpRequestNode("audit_log") {
+    .OnFinish(new HttpRequestNode("AuditLog") {
         Url = "https://api.example.com/audit",
         Method = HttpMethod.Post,
         Body = "{\"event\": \"provision_finished\"}"
@@ -191,8 +194,8 @@ var serviceId = await FlowBuilder
 You can add multiple handlers for each event — they run in the order they were added:
 
 ```csharp
-.OnSuccess(new HttpRequestNode("log_success") { /* ... */ })
-.OnSuccess(new HttpRequestNode("notify_team") { /* ... */ })
+.OnSuccess(new HttpRequestNode("LogSuccess") { /* ... */ })
+.OnSuccess(new HttpRequestNode("NotifyTeam") { /* ... */ })
 ```
 
 ### Checking the Outcome in OnFinish
@@ -200,7 +203,7 @@ You can add multiple handlers for each event — they run in the order they were
 Since `OnFinish` runs regardless of the outcome, you can check what happened using `FlowContext`:
 
 ```csharp
-.OnFinish(new EmailSendNode("final_report") {
+.OnFinish(new EmailSendNode("FinalReport") {
     ToEmail = "admin@example.com",
     Subject = "Flow Report",
     HtmlBodyResolver = ctx =>

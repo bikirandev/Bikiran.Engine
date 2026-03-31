@@ -82,18 +82,27 @@ public class FlowDefinitionParser
         var name = el.TryGetProperty("name", out var n) ? n.GetString() ?? "" : "";
         var paramsEl = el.TryGetProperty("params", out var p) ? p : (JsonElement?)null;
 
-        return type switch
+        var node = type switch
         {
             "Wait" => BuildWaitNode(name, paramsEl),
             "HttpRequest" => BuildHttpRequestNode(name, paramsEl),
             "EmailSend" => BuildEmailSendNode(name, paramsEl),
             "Transform" => BuildTransformNode(name, paramsEl),
-            "IfElse" => BuildIfElseNode(name, paramsEl, el),
+            "IfElse" => (IFlowNode?)BuildIfElseNode(name, paramsEl, el),
             "Parallel" => BuildParallelNode(name, paramsEl, el),
             "Retry" => BuildRetryNode(name, paramsEl, el),
             "WhileLoop" => BuildWhileLoopNode(name, paramsEl, el),
             _ => BuildCustomNode(type, name, paramsEl)
         };
+
+        // Apply optional progressMessage from JSON params
+        if (node != null && paramsEl.HasValue &&
+            paramsEl.Value.TryGetProperty("progressMessage", out var pm))
+        {
+            node.ProgressMessage = pm.GetString();
+        }
+
+        return node;
     }
 
     /// <summary>Parses a JSON array of node definitions into a list of IFlowNode.</summary>

@@ -1,4 +1,6 @@
+using Bikiran.Engine.Core;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 
 namespace Bikiran.Engine.Definitions;
 
@@ -13,6 +15,8 @@ public class FlowJsonValidator
         "Wait", "HttpRequest", "EmailSend", "Transform",
         "IfElse", "Parallel", "Retry", "WhileLoop"
     };
+
+    private static readonly Regex PascalCaseRegex = new(@"^[A-Z][a-zA-Z0-9]*$", RegexOptions.Compiled);
 
     /// <summary>
     /// Validates a flow JSON string. Returns an empty list if valid.
@@ -138,6 +142,9 @@ public class FlowJsonValidator
         var name = nameProp.GetString()!;
         if (!nodeNames.Add(name))
             errors.Add($"{path}: duplicate node name '{name}'.");
+
+        if (!PascalCaseRegex.IsMatch(name))
+            errors.Add($"{path}: node name '{name}' must be PascalCase (start with uppercase, no spaces or special characters). Example: 'FetchOrder', 'SendEmail'.");
 
         // Type-specific validation
         switch (type)

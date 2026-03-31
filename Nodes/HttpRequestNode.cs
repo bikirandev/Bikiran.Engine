@@ -13,7 +13,10 @@ namespace Bikiran.Engine.Nodes;
 public class HttpRequestNode : IFlowNode
 {
     public string Name { get; }
-    public string NodeType => "HttpRequest";
+    public FlowNodeType NodeType => FlowNodeType.HttpRequest;
+
+    /// <inheritdoc />
+    public string? ProgressMessage { get; set; }
 
     /// <summary>Target URL (required).</summary>
     public string Url { get; set; } = "";
@@ -36,7 +39,7 @@ public class HttpRequestNode : IFlowNode
     /// <summary>Seconds to wait between retries. Default is 2.</summary>
     public int RetryDelaySeconds { get; set; } = 2;
 
-    /// <summary>Context key where the response body is stored. Defaults to "{Name}_response".</summary>
+    /// <summary>Context key where the response body is stored. Defaults to "{Name}_Result".</summary>
     public string? OutputKey { get; set; }
 
     /// <summary>If set, the response must match this HTTP status code or the node fails.</summary>
@@ -49,11 +52,15 @@ public class HttpRequestNode : IFlowNode
     /// </summary>
     public string? ExpectValue { get; set; }
 
-    public HttpRequestNode(string name) => Name = name;
+    public HttpRequestNode(string name)
+    {
+        FlowNodeNameValidator.Validate(name);
+        Name = name;
+    }
 
     public async Task<NodeResult> ExecuteAsync(FlowContext context, CancellationToken cancellationToken)
     {
-        var outputKey = OutputKey ?? $"{Name}_response";
+        var outputKey = OutputKey ?? $"{Name}_Result";
 
         if (string.IsNullOrWhiteSpace(Url))
             return NodeResult.Fail("HttpRequestNode: Url is required.");

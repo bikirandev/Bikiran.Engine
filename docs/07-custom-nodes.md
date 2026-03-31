@@ -25,8 +25,9 @@ Every node — built-in or custom — implements this interface:
 ```csharp
 public interface IFlowNode
 {
-    string Name { get; }        // Unique name within the flow
-    string NodeType { get; }    // Type label
+    string Name { get; }             // Unique name within the flow (PascalCase)
+    FlowNodeType NodeType { get; }   // Node type enum value
+    string? ProgressMessage { get; set; } // Optional progress message
 
     Task<NodeResult> ExecuteAsync(FlowContext context, CancellationToken cancellationToken);
 }
@@ -42,12 +43,18 @@ public interface IFlowNode
 public class InvoicePdfNode : IFlowNode
 {
     public string Name { get; }
-    public string NodeType => "InvoicePdf";
+    public FlowNodeType NodeType => FlowNodeType.Custom;
+
+    public string? ProgressMessage { get; set; }
 
     public string InvoiceId { get; set; } = "";
     public string OutputKey { get; set; } = "pdf_url";
 
-    public InvoicePdfNode(string name) => Name = name;
+    public InvoicePdfNode(string name)
+    {
+        FlowNodeNameValidator.Validate(name);
+        Name = name;
+    }
 
     public async Task<NodeResult> ExecuteAsync(FlowContext context, CancellationToken ct)
     {
@@ -81,15 +88,15 @@ var serviceId = await FlowBuilder
     .WithContext(ctx => {
         ctx.HttpContext = HttpContext;
     })
-    .AddNode(new HttpRequestNode("fetch_order") {
-        Url = "https://api.example.com/order/123",
-        OutputKey = "order_data"
+    .AddNode(new HttpRequestNode("FetchOrder") {
+        Url = "https://api.example.com/order/123"
     })
-    .AddNode(new InvoicePdfNode("generate_pdf") {
+    .AddNode(new InvoicePdfNode("GeneratePdf") {
         InvoiceId = "INV-2024-001",
-        OutputKey = "pdf_url"
+        OutputKey = "pdf_url",
+        ProgressMessage = "Generating invoice PDF"
     })
-    .AddNode(new EmailSendNode("send_invoice") {
+    .AddNode(new EmailSendNode("SendInvoice") {
         CredentialName = "smtp_primary",
         ToEmail = "customer@example.com",
         Subject = "Your Invoice",
@@ -116,10 +123,11 @@ It can then be used in JSON:
 ```json
 {
   "type": "InvoicePdf",
-  "name": "generate_pdf",
+  "name": "GeneratePdf",
   "params": {
     "invoiceId": "{{invoiceId}}",
-    "outputKey": "pdf_url"
+    "outputKey": "pdf_url",
+    "progressMessage": "Generating invoice PDF"
   }
 }
 ```
@@ -128,14 +136,14 @@ It can then be used in JSON:
 
 ## Naming Conventions
 
-| Element                  | Convention                    | Example                     |
-| ------------------------ | ----------------------------- | --------------------------- |
-| Class name               | PascalCase + `Node`           | `InvoicePdfNode`            |
-| `NodeType` property      | PascalCase (no `Node` suffix) | `"InvoicePdf"`              |
-| `Name` (instance)        | lowercase_underscore          | `"generate_invoice_pdf"`    |
-| Configuration properties | PascalCase                    | `InvoiceId`, `OutputKey`    |
-| Context keys             | lowercase_underscore          | `"pdf_url"`, `"order_data"` |
-| JSON type string         | Same as `NodeType`            | `"InvoicePdf"`              |
+| Element                  | Convention                    | Example                        |
+| ------------------------ | ----------------------------- | ------------------------------ |
+| Class name               | PascalCase + `Node`           | `InvoicePdfNode`               |
+| `NodeType` property      | `FlowNodeType` enum value     | `FlowNodeType.Custom`          |
+| `Name` (instance)        | PascalCase (no spaces)        | `"GenerateInvoicePdf"`         |
+| Configuration properties | PascalCase                    | `InvoiceId`, `OutputKey`       |
+| Context keys             | lowercase_underscore          | `"pdf_url"`, `"order_data"`    |
+| JSON type string         | PascalCase                    | `"InvoicePdf"`                 |
 
 ---
 
@@ -273,7 +281,7 @@ public async Task InvoicePdfNode_SetsOutputKey_OnSuccess()
         Services = services
     };
 
-    var node = new InvoicePdfNode("generate_pdf")
+    var node = new InvoicePdfNode("GeneratePdf")
     {
         InvoiceId = "INV-001",
         OutputKey = "pdf_url"

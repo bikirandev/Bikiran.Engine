@@ -12,7 +12,10 @@ namespace Bikiran.Engine.Nodes;
 public class EmailSendNode : IFlowNode
 {
     public string Name { get; }
-    public string NodeType => "EmailSend";
+    public FlowNodeType NodeType => FlowNodeType.EmailSend;
+
+    /// <inheritdoc />
+    public string? ProgressMessage { get; set; }
 
     /// <summary>Recipient email address (required).</summary>
     public string ToEmail { get; set; } = "";
@@ -47,7 +50,11 @@ public class EmailSendNode : IFlowNode
     /// <summary>Dynamically builds placeholder values from context.</summary>
     public Func<FlowContext, Dictionary<string, string>>? PlaceholderResolver { get; set; }
 
-    public EmailSendNode(string name) => Name = name;
+    public EmailSendNode(string name)
+    {
+        FlowNodeNameValidator.Validate(name);
+        Name = name;
+    }
 
     public async Task<NodeResult> ExecuteAsync(FlowContext context, CancellationToken cancellationToken)
     {
