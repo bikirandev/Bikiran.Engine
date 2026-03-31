@@ -10,8 +10,11 @@ public interface IFlowNode
     /// <summary>Unique name for this node within the flow (PascalCase, no spaces).</summary>
     string Name { get; }
 
-    /// <summary>The node type enum value.</summary>
-    FlowNodeType NodeType { get; }
+    /// <summary>
+    /// The node type enum value. Defaults to <see cref="FlowNodeType.Custom"/> for user-defined nodes.
+    /// Built-in nodes override this internally. Do not override in custom node implementations.
+    /// </summary>
+    FlowNodeType NodeType => FlowNodeType.Custom;
 
     /// <summary>
     /// Optional progress message shown while this node is executing.

@@ -2,6 +2,8 @@ using Bikiran.Engine.Database;
 using Bikiran.Engine.Database.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using System.Reflection;
+using System.Text.Json;
 
 namespace Bikiran.Engine.Core;
 
@@ -51,7 +53,8 @@ internal class FlowRunner
                 var nodeStartedAt = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
 
                 if (context.Config.EnableNodeLogging)
-                    await CreateNodeLogAsync(context.ServiceId, node, sequence, FlowNodeStatus.Running, nodeStartedAt);
+                    await CreateNodeLogAsync(context.ServiceId, node, sequence, FlowNodeStatus.Running,
+                        nodeStartedAt, SerializeNodeInput(node));
 
                 // Persist the node's progress message to the run record
                 await UpdateRunProgressMessageAsync(context.ServiceId, node.ProgressMessage);
@@ -92,7 +95,8 @@ internal class FlowRunner
                         branchTaken,
                         retryCount,
                         nodeCompletedAt / 1000,
-                        durationMs);
+                        durationMs,
+                        SafeSerialize(result.Output));
                 }
 
                 if (result.Success)
@@ -180,7 +184,8 @@ internal class FlowRunner
             var nodeStartedAt = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
 
             if (context.Config.EnableNodeLogging)
-                await CreateNodeLogAsync(context.ServiceId, node, sequence, FlowNodeStatus.Running, nodeStartedAt);
+                await CreateNodeLogAsync(context.ServiceId, node, sequence, FlowNodeStatus.Running,
+                    nodeStartedAt, SerializeNodeInput(node));
 
             NodeResult result;
             try
@@ -208,7 +213,8 @@ internal class FlowRunner
                     branchTaken: null,
                     retryCount: 0,
                     nodeCompletedAt / 1000,
-                    durationMs);
+                    durationMs,
+                    SafeSerialize(result.Output));
             }
 
             sequence++;
@@ -264,7 +270,8 @@ internal class FlowRunner
         await _db.SaveChangesAsync();
     }
 
-    private async Task CreateNodeLogAsync(string serviceId, IFlowNode node, int sequence, FlowNodeStatus status, long startedAtMs)
+    private async Task CreateNodeLogAsync(string serviceId, IFlowNode node, int sequence,
+        FlowNodeStatus status, long startedAtMs, string inputData)
     {
         if (_db == null) return;
 
@@ -275,6 +282,7 @@ internal class FlowRunner
             NodeType = node.NodeType.ToString(),
             Sequence = sequence,
             Status = status.ToString().ToLowerInvariant(),
+            InputData = inputData,
             StartedAt = startedAtMs / 1000,
             TimeCreated = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
             TimeUpdated = DateTimeOffset.UtcNow.ToUnixTimeSeconds()
@@ -286,7 +294,7 @@ internal class FlowRunner
 
     private async Task UpdateNodeLogAsync(string serviceId, string nodeName, int sequence,
         FlowNodeStatus status, string? errorMessage, string? branchTaken, int retryCount,
-        long completedAt, long durationMs)
+        long completedAt, long durationMs, string outputData)
     {
         if (_db == null) return;
 
@@ -295,6 +303,7 @@ internal class FlowRunner
         if (log == null) return;
 
         log.Status = status.ToString().ToLowerInvariant();
+        log.OutputData = outputData;
         log.CompletedAt = completedAt;
         log.DurationMs = durationMs;
         log.RetryCount = retryCount;
