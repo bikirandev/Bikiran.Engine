@@ -2,6 +2,7 @@ using Bikiran.Engine.Database;
 using Bikiran.Engine.Database.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using System.Net.Http;
 using System.Reflection;
 using System.Text.Json;
 
@@ -314,5 +315,76 @@ internal class FlowRunner
             log.ErrorMessage = errorMessage[..Math.Min(errorMessage.Length, 500)];
 
         await _db.SaveChangesAsync();
+    }
+
+    // --- Serialization helpers ---
+
+    private static readonly JsonSerializerOptions _logJsonOptions = new()
+    {
+        WriteIndented = false,
+        MaxDepth = 5
+    };
+
+    private static readonly HashSet<string> _skipProperties = new()
+    {
+        "Name", "NodeType", "ProgressMessage"
+    };
+
+    private static string SerializeNodeInput(IFlowNode node)
+    {
+        try
+        {
+            var dict = new Dictionary<string, object?>();
+
+            foreach (var prop in node.GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance))
+            {
+                if (!prop.CanRead || _skipProperties.Contains(prop.Name)) continue;
+                if (!IsSerializableType(prop.PropertyType)) continue;
+
+                var value = prop.GetValue(node);
+                if (value is HttpMethod httpMethod)
+                    value = httpMethod.Method;
+
+                if (value != null)
+                    dict[prop.Name] = value;
+            }
+
+            return dict.Count > 0
+                ? JsonSerializer.Serialize(dict, _logJsonOptions)
+                : "{}";
+        }
+        catch
+        {
+            return "{}";
+        }
+    }
+
+    private static string SafeSerialize(object? value)
+    {
+        if (value == null) return "{}";
+        try
+        {
+            return JsonSerializer.Serialize(value, _logJsonOptions);
+        }
+        catch
+        {
+            return value.ToString() ?? "{}";
+        }
+    }
+
+    private static bool IsSerializableType(Type type)
+    {
+        if (type == typeof(string)) return true;
+        if (type.IsPrimitive || type == typeof(decimal)) return true;
+        if (type.IsEnum) return true;
+        if (type == typeof(HttpMethod)) return true;
+        if (Nullable.GetUnderlyingType(type) is { } underlying)
+            return IsSerializableType(underlying);
+        if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Dictionary<,>))
+        {
+            var args = type.GetGenericArguments();
+            return args[0] == typeof(string) && IsSerializableType(args[1]);
+        }
+        return false;
     }
 }

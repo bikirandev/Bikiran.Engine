@@ -161,8 +161,8 @@ Get full details of a single run including all step execution logs.
         "retryCount": 0,
         "branchTaken": null,
         "errorMessage": null,
-        "inputData": null,
-        "outputData": "{\"orderId\": 123}",
+        "inputData": "{\"Url\":\"https://api.example.com/order/123\",\"Method\":\"GET\",\"TimeoutSeconds\":30}",
+        "outputData": "{\"orderId\":123,\"status\":\"paid\"}",
         "startedAt": 1742000000,
         "completedAt": 1742000001
       }

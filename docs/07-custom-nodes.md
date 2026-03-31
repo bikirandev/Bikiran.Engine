@@ -25,13 +25,15 @@ Every node — built-in or custom — implements this interface:
 ```csharp
 public interface IFlowNode
 {
-    string Name { get; }             // Unique name within the flow (PascalCase)
-    FlowNodeType NodeType { get; }   // Node type enum value
-    string? ProgressMessage { get; set; } // Optional progress message
+    string Name { get; }                              // Unique name within the flow (PascalCase)
+    FlowNodeType NodeType => FlowNodeType.Custom;     // Auto-defaults to Custom; do not override
+    string? ProgressMessage { get; set; }             // Optional progress message
 
     Task<NodeResult> ExecuteAsync(FlowContext context, CancellationToken cancellationToken);
 }
 ```
+
+> **Note:** `NodeType` is assigned automatically by the engine. Built-in nodes return their specific type (e.g., `HttpRequest`, `Wait`). Custom nodes automatically get `FlowNodeType.Custom` — you do not need to set or override this property.
 
 ---
 
@@ -43,7 +45,7 @@ public interface IFlowNode
 public class InvoicePdfNode : IFlowNode
 {
     public string Name { get; }
-    public FlowNodeType NodeType => FlowNodeType.Custom;
+    // NodeType is automatically FlowNodeType.Custom — no need to declare it
 
     public string? ProgressMessage { get; set; }
 
@@ -139,7 +141,7 @@ It can then be used in JSON:
 | Element                  | Convention                    | Example                        |
 | ------------------------ | ----------------------------- | ------------------------------ |
 | Class name               | PascalCase + `Node`           | `InvoicePdfNode`               |
-| `NodeType` property      | `FlowNodeType` enum value     | `FlowNodeType.Custom`          |
+| `NodeType` property      | Auto-assigned (do not override) | `FlowNodeType.Custom` (automatic) |
 | `Name` (instance)        | PascalCase (no spaces)        | `"GenerateInvoicePdf"`         |
 | Configuration properties | PascalCase                    | `InvoiceId`, `OutputKey`       |
 | Context keys             | lowercase_underscore          | `"pdf_url"`, `"order_data"`    |

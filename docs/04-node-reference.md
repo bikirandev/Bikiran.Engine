@@ -6,7 +6,7 @@ Nodes are the building blocks of every flow. Each node performs one task — mak
 
 ## Node Type Enum
 
-Every node has a `NodeType` property that returns a value from the `FlowNodeType` enum:
+Every node has a `NodeType` property that returns a value from the `FlowNodeType` enum. Built-in nodes return their specific type automatically. Custom nodes default to `FlowNodeType.Custom` via a default interface implementation — you do not need to set or override this property.
 
 ```csharp
 public enum FlowNodeType
