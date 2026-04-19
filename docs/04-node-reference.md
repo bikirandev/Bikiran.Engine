@@ -1,6 +1,6 @@
 # Node Reference
 
-Nodes are the building blocks of every flow. Each node performs one task — making an HTTP call, sending an email, pausing, branching, or querying a database. This document covers all 9 built-in node types.
+Nodes are the building blocks of every flow. Each node performs one task — making an HTTP call, sending an email, pausing, branching, or querying a database. This document covers all 11 built-in node types.
 
 ---
 
@@ -12,6 +12,8 @@ Built-in nodes are classified as their specific type (e.g., `Wait`, `HttpRequest
 
 | Type           | Description                            |
 | -------------- | -------------------------------------- |
+| Starting       | Marks the start of a flow              |
+| Ending         | Marks the end of a flow                |
 | Wait           | Pauses flow execution                  |
 | HttpRequest    | Makes an outbound HTTP request         |
 | EmailSend      | Sends an email via SMTP                |
@@ -80,17 +82,77 @@ new HttpRequestNode("FetchOrder") {
 
 ## At a Glance
 
-| Node                                    | NodeType Enum   | What It Does                                |
-| --------------------------------------- | --------------- | ------------------------------------------- |
-| [WaitNode](#waitnode)                   | `Wait`          | Pause execution for a set duration          |
-| [HttpRequestNode](#httprequestnode)     | `HttpRequest`   | Make an outbound HTTP call                  |
-| [EmailSendNode](#emailsendnode)         | `EmailSend`     | Send an email via SMTP                      |
-| [IfElseNode](#ifelsenode)               | `IfElse`        | Take different paths based on a condition   |
-| [WhileLoopNode](#whileloopnode)         | `WhileLoop`     | Repeat steps while a condition is true      |
-| [DatabaseQueryNode](#databasequerynode) | `DatabaseQuery` | Run a database query and store the result   |
-| [TransformNode](#transformnode)         | `Transform`     | Reshape or derive values from existing data |
-| [RetryNode](#retrynode)                 | `Retry`         | Wrap any node with retry logic              |
-| [ParallelNode](#parallelnode)           | `Parallel`      | Run multiple branches at the same time      |
+| Node                                      | NodeType Enum   | What It Does                                |
+| ----------------------------------------- | --------------- | ------------------------------------------- |
+| [StartingNode](#startingnode)             | `Starting`      | Mark the start of a flow with an optional pause |
+| [EndingNode](#endingnode)                 | `Ending`        | Mark the successful end of a flow           |
+| [WaitNode](#waitnode)                     | `Wait`          | Pause execution for a set duration          |
+| [HttpRequestNode](#httprequestnode)       | `HttpRequest`   | Make an outbound HTTP call                  |
+| [EmailSendNode](#emailsendnode)           | `EmailSend`     | Send an email via SMTP                      |
+| [IfElseNode](#ifelsenode)                 | `IfElse`        | Take different paths based on a condition   |
+| [WhileLoopNode](#whileloopnode)           | `WhileLoop`     | Repeat steps while a condition is true      |
+| [DatabaseQueryNode](#databasequerynode)   | `DatabaseQuery` | Run a database query and store the result   |
+| [TransformNode](#transformnode)           | `Transform`     | Reshape or derive values from existing data |
+| [RetryNode](#retrynode)                   | `Retry`         | Wrap any node with retry logic              |
+| [ParallelNode](#parallelnode)             | `Parallel`      | Run multiple branches at the same time      |
+
+---
+
+## StartingNode
+
+A lightweight marker node that signals the beginning of a flow. Optionally pauses for a brief moment before handing off to the next node.
+
+**Properties:**
+
+| Property          | Type     | Default          | Description                             |
+| ----------------- | -------- | ---------------- | --------------------------------------- |
+| `Name`            | string   | `"StartingNode"` | Step name (PascalCase)                  |
+| `ProgressMessage` | string?  | null             | Progress message shown during execution |
+| `WaitTime`        | TimeSpan | `00:00:01`       | Pause duration before proceeding        |
+
+**Direct usage:**
+
+```csharp
+new StartingNode
+{
+    ProgressMessage = $"Upgrading from {previousVersion} to {newVersion}",
+    WaitTime = TimeSpan.FromSeconds(1)
+}
+```
+
+**Builder shorthand:**
+
+```csharp
+FlowBuilder.Create("UpgradeFlow")
+    .StartingNode($"Upgrading from {previousVersion} to {newVersion}", TimeSpan.FromSeconds(1))
+    // ... other nodes ...
+    .EndingNode("Upgrade complete.")
+```
+
+---
+
+## EndingNode
+
+A lightweight marker node that signals the successful completion of a flow. Returns immediately with a completion message.
+
+**Properties:**
+
+| Property          | Type    | Default         | Description                             |
+| ----------------- | ------- | --------------- | --------------------------------------- |
+| `Name`            | string  | `"EndingNode"`  | Step name (PascalCase)                  |
+| `ProgressMessage` | string? | null            | Progress message shown during execution |
+
+**Direct usage:**
+
+```csharp
+new EndingNode { ProgressMessage = "All done." }
+```
+
+**Builder shorthand:**
+
+```csharp
+.EndingNode("All done.")
+```
 
 ---
 

@@ -31,6 +31,8 @@ internal class FlowRunnerHelper
         { typeof(TransformNode), FlowNodeType.Transform },
         { typeof(RetryNode), FlowNodeType.Retry },
         { typeof(ParallelNode), FlowNodeType.Parallel },
+        { typeof(StartingNode), FlowNodeType.Starting },
+        { typeof(EndingNode), FlowNodeType.Ending },
     };
 
     /// <summary>

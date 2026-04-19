@@ -32,6 +32,12 @@ internal enum FlowNodeType
     /// <summary>Runs multiple branches concurrently.</summary>
     Parallel,
 
+    /// <summary>Marks the start of a flow.</summary>
+    Starting,
+
+    /// <summary>Marks the end of a flow.</summary>
+    Ending,
+
     /// <summary>A user-defined custom node type.</summary>
     Custom
 }

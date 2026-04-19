@@ -52,6 +52,29 @@ public class FlowBuilder
         return this;
     }
 
+    /// <summary>
+    /// Adds a <see cref="Bikiran.Engine.Nodes.StartingNode"/> as the first step of the flow.
+    /// </summary>
+    /// <param name="progressMessage">Progress message shown while this node runs.</param>
+    /// <param name="waitTime">How long to pause before handing off. Defaults to 1 second.</param>
+    public FlowBuilder StartingNode(string progressMessage = "Flow started.", TimeSpan? waitTime = null)
+    {
+        return AddNode(new Nodes.StartingNode
+        {
+            ProgressMessage = progressMessage,
+            WaitTime = waitTime ?? TimeSpan.FromSeconds(1)
+        });
+    }
+
+    /// <summary>
+    /// Adds an <see cref="Bikiran.Engine.Nodes.EndingNode"/> as the final step of the flow.
+    /// </summary>
+    /// <param name="progressMessage">Progress message shown while this node runs.</param>
+    public FlowBuilder EndingNode(string progressMessage = "Flow completed.")
+    {
+        return AddNode(new Nodes.EndingNode { ProgressMessage = progressMessage });
+    }
+
     /// <summary>Adds a node that runs only when all main nodes complete successfully.</summary>
     public FlowBuilder OnSuccess(IFlowNode node)
     {
