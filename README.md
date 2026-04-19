@@ -13,7 +13,7 @@ Think of it as **n8n or Zapier embedded directly inside your .NET application**,
 ## Features
 
 - **Fluent Builder API** — build workflows by chaining method calls in C#
-- **9 Built-in Node Types** — HTTP requests, emails, conditions, loops, retries, parallel execution, and more
+- **11 Built-in Node Types** — start/end markers, HTTP requests, emails, conditions, loops, retries, parallel execution, and more
 - **Background Execution** — flows run asynchronously without blocking the caller
 - **Persistent Logging** — every step is recorded in the database with timing and error details
 - **Lifecycle Events** — run handlers on success, failure, or always after a flow completes
@@ -64,11 +64,13 @@ That's it. On first startup, all required database tables are created automatica
 ```csharp
 var serviceId = await FlowBuilder
     .Create("my_first_flow")
+    .StartingNode("Flow is starting")
     .AddNode(new WaitNode("pause") { DelayMs = 1000 })
     .AddNode(new HttpRequestNode("call_api") {
         Url = "https://httpbin.org/get",
         OutputKey = "api_response"
     })
+    .EndingNode("Flow completed successfully.")
     .StartAsync();
 // Returns immediately — the flow runs in the background
 ```
@@ -77,17 +79,19 @@ var serviceId = await FlowBuilder
 
 ## Built-in Node Types
 
-| Node                   | Purpose                                  |
-| ---------------------- | ---------------------------------------- |
-| `WaitNode`             | Pause execution for a set duration       |
-| `HttpRequestNode`      | Make an outbound HTTP call with retries  |
-| `EmailSendNode`        | Send an email via SMTP                   |
-| `IfElseNode`           | Branch on a condition                    |
-| `WhileLoopNode`        | Repeat steps while a condition is true   |
-| `DatabaseQueryNode<T>` | Run an EF Core query                     |
-| `TransformNode`        | Reshape or derive values from context    |
-| `RetryNode`            | Wrap any node with retry + backoff logic |
-| `ParallelNode`         | Run multiple branches concurrently       |
+| Node                   | Purpose                                                    |
+| ---------------------- | ---------------------------------------------------------- |
+| `StartingNode`         | Mark the start of a flow with an optional pause (optional) |
+| `EndingNode`           | Mark the successful end of a flow (optional)               |
+| `WaitNode`             | Pause execution for a set duration                         |
+| `HttpRequestNode`      | Make an outbound HTTP call with retries                    |
+| `EmailSendNode`        | Send an email via SMTP                                     |
+| `IfElseNode`           | Branch on a condition                                      |
+| `WhileLoopNode`        | Repeat steps while a condition is true                     |
+| `DatabaseQueryNode<T>` | Run an EF Core query                                       |
+| `TransformNode`        | Reshape or derive values from context                      |
+| `RetryNode`            | Wrap any node with retry + backoff logic                   |
+| `ParallelNode`         | Run multiple branches concurrently                         |
 
 ---
 
@@ -122,7 +126,7 @@ app.MapBikiranEngineEndpoints();
 | [Introduction](docs/01-introduction.md)             | Overview and architecture                |
 | [Getting Started](docs/02-getting-started.md)       | Installation, setup, and your first flow |
 | [Building Flows](docs/03-building-flows.md)         | FlowBuilder API and execution model      |
-| [Built-in Nodes](docs/04-built-in-nodes.md)         | All 9 node types with examples           |
+| [Built-in Nodes](docs/04-node-reference.md)         | All 11 node types with examples          |
 | [Flow Definitions](docs/05-flow-definitions.md)     | Reusable JSON flow templates             |
 | [Scheduling](docs/06-scheduling.md)                 | Cron, interval, and one-time scheduling  |
 | [Custom Nodes](docs/07-custom-nodes.md)             | Creating your own node types             |
