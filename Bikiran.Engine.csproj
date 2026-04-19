@@ -37,10 +37,10 @@
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
 
     <!-- Quartz.NET for scheduling -->
-    <PackageReference Include="Quartz.Extensions.Hosting" Version="3.10.0" />
+    <PackageReference Include="Quartz.Extensions.Hosting" Version="3.18.0" />
 
     <!-- MailKit for SMTP email sending -->
-    <PackageReference Include="MailKit" Version="4.3.0" />
+    <PackageReference Include="MailKit" Version="4.16.0" />
   </ItemGroup>
 
 </Project>
