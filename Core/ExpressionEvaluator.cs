@@ -79,15 +79,17 @@ public static class ExpressionEvaluator
     /// <summary>Evaluates a simplified boolean expression string.</summary>
     internal static bool EvaluateCondition(string condition)
     {
-        if (condition.Contains("&&"))
-        {
-            var parts = condition.Split("&&", 2);
-            return EvaluateCondition(parts[0].Trim()) && EvaluateCondition(parts[1].Trim());
-        }
+        // || is lower precedence than &&, so split on || first (outermost level).
+        // This ensures a || b && c is correctly evaluated as a || (b && c).
         if (condition.Contains("||"))
         {
             var parts = condition.Split("||", 2);
             return EvaluateCondition(parts[0].Trim()) || EvaluateCondition(parts[1].Trim());
+        }
+        if (condition.Contains("&&"))
+        {
+            var parts = condition.Split("&&", 2);
+            return EvaluateCondition(parts[0].Trim()) && EvaluateCondition(parts[1].Trim());
         }
 
         foreach (var op in new[] { ">=", "<=", "!=", "==", ">", "<" })

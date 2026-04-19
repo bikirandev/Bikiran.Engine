@@ -49,7 +49,10 @@ public class RetryNode : IFlowNode
             cancellationToken.ThrowIfCancellationRequested();
 
             if (attempt > 1)
+            {
                 await Task.Delay((int)delay, cancellationToken);
+                delay *= BackoffMultiplier;
+            }
 
             lastResult = await Inner.ExecuteAsync(context, cancellationToken);
             attemptsUsed = attempt;
@@ -63,8 +66,6 @@ public class RetryNode : IFlowNode
             var shouldRetry = RetryOn?.Invoke(lastResult) ?? !lastResult.Success;
             if (!shouldRetry)
                 break;
-
-            delay *= BackoffMultiplier;
         }
 
         context.Set($"{Name}_retry_count", attemptsUsed - 1);

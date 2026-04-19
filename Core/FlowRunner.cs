@@ -119,9 +119,14 @@ internal class FlowRunner
                     if (context.Has($"{node.Name}_retry_count"))
                         retryCount = context.Get<int>($"{node.Name}_retry_count");
                 }
-                catch (OperationCanceledException)
+                catch (OperationCanceledException) when (ct.IsCancellationRequested)
                 {
                     result = NodeResult.Fail($"Node '{node.Name}' was cancelled because the flow exceeded MaxExecutionTime ({context.Config.MaxExecutionTime.TotalMinutes} minutes).");
+                }
+                catch (OperationCanceledException ex)
+                {
+                    result = NodeResult.Fail($"Node '{node.Name}' threw OperationCanceledException: {ex.Message}");
+                    context.Logger?.LogError(ex, "Node {NodeName} threw OperationCanceledException unrelated to flow timeout", node.Name);
                 }
                 catch (Exception ex)
                 {
@@ -247,9 +252,14 @@ internal class FlowRunner
             {
                 result = await node.ExecuteAsync(context, ct);
             }
-            catch (OperationCanceledException)
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
             {
                 result = NodeResult.Fail($"{phase} node '{node.Name}' was cancelled because the lifecycle phase exceeded its 5-minute timeout.");
+            }
+            catch (OperationCanceledException ex)
+            {
+                result = NodeResult.Fail($"{phase} node '{node.Name}' threw OperationCanceledException: {ex.Message}");
+                context.Logger?.LogError(ex, "{Phase} node '{NodeName}' threw OperationCanceledException unrelated to lifecycle timeout", phase, node.Name);
             }
             catch (Exception ex)
             {
