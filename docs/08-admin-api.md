@@ -199,7 +199,10 @@ Get the current progress of a running (or completed) flow.
     "completedApproxMs": 7000,
     "weightedProgressPercent": 70.0,
     "liveProgressPercent": 84.0,
-    "currentProgressMessage": "Waiting for DNS propagation"
+    "currentProgressMessage": "Waiting for DNS propagation",
+    "currentTime": 1745193600000,
+    "flowStartedAt": 1745193580000,
+    "currentNodeStartedAt": 1745193595000
   }
 }
 ```
@@ -208,6 +211,9 @@ Get the current progress of a running (or completed) flow.
 - `weightedProgressPercent` — updated after each node completes; based on declared `ApproxExecutionTime` weights.
 - `liveProgressPercent` — interpolated in real time using elapsed ms within the current node; never exceeds the node's approx time contribution.
 - Both fields fall back to uniform step-count progress when all nodes use the default `ApproxExecutionTime`.
+- `currentTime` — server UTC timestamp (Unix milliseconds) at the moment the response was generated. Useful for computing elapsed time on the client without clock-skew issues.
+- `flowStartedAt` — UTC Unix milliseconds when the flow execution began (`FlowRun.StartedAt`). Returns `0` for runs that have not yet moved past the `pending` state.
+- `currentNodeStartedAt` — UTC Unix milliseconds when the currently executing node began (`FlowRun.CurrentNodeStartedAtMs`). Returns `0` when no node is actively running (e.g. pending, completed, or failed).
 
 ### GET /runs/status/{status}
 

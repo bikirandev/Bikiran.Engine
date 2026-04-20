@@ -93,7 +93,10 @@ public class FlowRunsController : ControllerBase
                 run.CompletedApproxMs,
                 weightedProgressPercent = weightedPercent,
                 liveProgressPercent = livePercent,
-                run.CurrentProgressMessage
+                run.CurrentProgressMessage,
+                currentTime = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
+                flowStartedAt = run.StartedAt,
+                currentNodeStartedAt = run.CurrentNodeStartedAtMs
             }
         });
     }
