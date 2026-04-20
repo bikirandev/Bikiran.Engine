@@ -14,6 +14,9 @@ public class StartingNode : IFlowNode
     /// <inheritdoc />
     public string? ProgressMessage { get; set; }
 
+    /// <inheritdoc />
+    public TimeSpan ApproxExecutionTime { get; set; } = TimeSpan.FromSeconds(1);
+
     /// <summary>How long to pause before proceeding. Default is 1 second.</summary>
     public TimeSpan WaitTime { get; set; } = TimeSpan.FromSeconds(1);
 

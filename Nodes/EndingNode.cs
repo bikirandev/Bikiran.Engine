@@ -14,6 +14,9 @@ public class EndingNode : IFlowNode
     /// <inheritdoc />
     public string? ProgressMessage { get; set; }
 
+    /// <inheritdoc />
+    public TimeSpan ApproxExecutionTime { get; set; } = TimeSpan.FromSeconds(1);
+
     /// <summary>
     /// Creates a new EndingNode.
     /// </summary>

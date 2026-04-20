@@ -145,7 +145,10 @@ Get full details of a single run including all step execution logs.
     "triggerSource": "OrdersV3Controller",
     "totalNodes": 4,
     "completedNodes": 4,
-    "progressPercent": 100,
+    "totalApproxMs": 8000,
+    "completedApproxMs": 8000,
+    "weightedProgressPercent": 100.0,
+    "liveProgressPercent": 100.0,
     "currentProgressMessage": null,
     "durationMs": 3421,
     "startedAt": 1742000000,
@@ -158,6 +161,7 @@ Get full details of a single run including all step execution logs.
         "nodeType": "HttpRequest",
         "status": "completed",
         "durationMs": 1200,
+        "approxExecutionMs": 3000,
         "retryCount": 0,
         "branchTaken": null,
         "errorMessage": null,
@@ -189,13 +193,21 @@ Get the current progress of a running (or completed) flow.
   "data": {
     "serviceId": "a1b2c3d4...",
     "status": "running",
-    "percent": 75,
-    "completedNodes": 3,
     "totalNodes": 4,
+    "completedNodes": 3,
+    "totalApproxMs": 10000,
+    "completedApproxMs": 7000,
+    "weightedProgressPercent": 70.0,
+    "liveProgressPercent": 84.0,
     "currentProgressMessage": "Waiting for DNS propagation"
   }
 }
 ```
+
+**Field notes:**
+- `weightedProgressPercent` — updated after each node completes; based on declared `ApproxExecutionTime` weights.
+- `liveProgressPercent` — interpolated in real time using elapsed ms within the current node; never exceeds the node's approx time contribution.
+- Both fields fall back to uniform step-count progress when all nodes use the default `ApproxExecutionTime`.
 
 ### GET /runs/status/{status}
 

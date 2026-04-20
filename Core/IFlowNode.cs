@@ -16,6 +16,13 @@ public interface IFlowNode
     /// </summary>
     string? ProgressMessage { get; set; }
 
+    /// <summary>
+    /// Approximate wall-clock time this node is expected to take.
+    /// Used as a weight for calculating time-weighted progress percentages.
+    /// Default is 1 second.
+    /// </summary>
+    TimeSpan ApproxExecutionTime { get; set; }
+
     /// <summary>Executes the node's logic and returns a result.</summary>
     Task<NodeResult> ExecuteAsync(FlowContext context, CancellationToken cancellationToken);
 }

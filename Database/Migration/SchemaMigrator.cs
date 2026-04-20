@@ -14,10 +14,10 @@ namespace Bikiran.Engine.Database.Migration;
 public class SchemaMigrator
 {
     /// <summary>Current schema version embedded in this package version.</summary>
-    public const string CurrentSchemaVersion = "1.5.0";
+    public const string CurrentSchemaVersion = "1.6.0";
 
     /// <summary>NuGet package version.</summary>
-    public const string PackageVersion = "1.5.0";
+    public const string PackageVersion = "1.6.0";
 
     private readonly EngineDbContext _db;
     private readonly ILogger<SchemaMigrator>? _logger;
@@ -131,6 +131,10 @@ public class SchemaMigrator
                 `ContextMeta` longtext NOT NULL,
                 `TotalNodes` int NOT NULL DEFAULT 0,
                 `CompletedNodes` int NOT NULL DEFAULT 0,
+                `TotalApproxMs` bigint NOT NULL DEFAULT 0,
+                `CompletedApproxMs` bigint NOT NULL DEFAULT 0,
+                `CurrentNodeApproxMs` bigint NOT NULL DEFAULT 0,
+                `CurrentNodeStartedAtMs` bigint NOT NULL DEFAULT 0,
                 `ErrorMessage` varchar(500) NULL,
                 `CurrentProgressMessage` varchar(500) NULL,
                 `StartedAt` bigint NOT NULL DEFAULT 0,
@@ -159,6 +163,7 @@ public class SchemaMigrator
                 `ErrorMessage` varchar(500) NULL,
                 `BranchTaken` varchar(20) NULL,
                 `RetryCount` int NOT NULL DEFAULT 0,
+                `ApproxExecutionMs` bigint NOT NULL DEFAULT 0,
                 `StartedAt` bigint NOT NULL DEFAULT 0,
                 `CompletedAt` bigint NOT NULL DEFAULT 0,
                 `DurationMs` bigint NOT NULL DEFAULT 0,
@@ -315,6 +320,94 @@ public class SchemaMigrator
             }
 
             _logger?.LogInformation("Bikiran.Engine: Applied migration to 1.5.0 (CurrentProgressMessage column).");
+        }
+
+        // Migration: 1.5.x → 1.6.0: Add time-weighted progress columns to FlowRun and FlowNodeLog
+        if (string.Compare(current.SchemaVersion, "1.6.0", StringComparison.Ordinal) < 0)
+        {
+            var providerName3 = _db.Database.ProviderName ?? "";
+            var isMySql3 = providerName3.Contains("MySql", StringComparison.OrdinalIgnoreCase) ||
+                           providerName3.Contains("Pomelo", StringComparison.OrdinalIgnoreCase);
+
+            if (isMySql3)
+            {
+                // FlowRun: TotalApproxMs
+                await ExecuteSilentAsync("""
+                    SET @col_exists = (
+                        SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS
+                        WHERE TABLE_NAME = 'FlowRun' AND COLUMN_NAME = 'TotalApproxMs'
+                        AND TABLE_SCHEMA = DATABASE()
+                    );
+                    SET @sql = IF(@col_exists = 0,
+                        'ALTER TABLE `FlowRun` ADD COLUMN `TotalApproxMs` bigint NOT NULL DEFAULT 0 AFTER `CompletedNodes`',
+                        'SELECT 1');
+                    PREPARE stmt FROM @sql;
+                    EXECUTE stmt;
+                    DEALLOCATE PREPARE stmt;
+                    """);
+
+                // FlowRun: CompletedApproxMs
+                await ExecuteSilentAsync("""
+                    SET @col_exists = (
+                        SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS
+                        WHERE TABLE_NAME = 'FlowRun' AND COLUMN_NAME = 'CompletedApproxMs'
+                        AND TABLE_SCHEMA = DATABASE()
+                    );
+                    SET @sql = IF(@col_exists = 0,
+                        'ALTER TABLE `FlowRun` ADD COLUMN `CompletedApproxMs` bigint NOT NULL DEFAULT 0 AFTER `TotalApproxMs`',
+                        'SELECT 1');
+                    PREPARE stmt FROM @sql;
+                    EXECUTE stmt;
+                    DEALLOCATE PREPARE stmt;
+                    """);
+
+                // FlowRun: CurrentNodeApproxMs
+                await ExecuteSilentAsync("""
+                    SET @col_exists = (
+                        SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS
+                        WHERE TABLE_NAME = 'FlowRun' AND COLUMN_NAME = 'CurrentNodeApproxMs'
+                        AND TABLE_SCHEMA = DATABASE()
+                    );
+                    SET @sql = IF(@col_exists = 0,
+                        'ALTER TABLE `FlowRun` ADD COLUMN `CurrentNodeApproxMs` bigint NOT NULL DEFAULT 0 AFTER `CompletedApproxMs`',
+                        'SELECT 1');
+                    PREPARE stmt FROM @sql;
+                    EXECUTE stmt;
+                    DEALLOCATE PREPARE stmt;
+                    """);
+
+                // FlowRun: CurrentNodeStartedAtMs
+                await ExecuteSilentAsync("""
+                    SET @col_exists = (
+                        SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS
+                        WHERE TABLE_NAME = 'FlowRun' AND COLUMN_NAME = 'CurrentNodeStartedAtMs'
+                        AND TABLE_SCHEMA = DATABASE()
+                    );
+                    SET @sql = IF(@col_exists = 0,
+                        'ALTER TABLE `FlowRun` ADD COLUMN `CurrentNodeStartedAtMs` bigint NOT NULL DEFAULT 0 AFTER `CurrentNodeApproxMs`',
+                        'SELECT 1');
+                    PREPARE stmt FROM @sql;
+                    EXECUTE stmt;
+                    DEALLOCATE PREPARE stmt;
+                    """);
+
+                // FlowNodeLog: ApproxExecutionMs
+                await ExecuteSilentAsync("""
+                    SET @col_exists = (
+                        SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS
+                        WHERE TABLE_NAME = 'FlowNodeLog' AND COLUMN_NAME = 'ApproxExecutionMs'
+                        AND TABLE_SCHEMA = DATABASE()
+                    );
+                    SET @sql = IF(@col_exists = 0,
+                        'ALTER TABLE `FlowNodeLog` ADD COLUMN `ApproxExecutionMs` bigint NOT NULL DEFAULT 0 AFTER `RetryCount`',
+                        'SELECT 1');
+                    PREPARE stmt FROM @sql;
+                    EXECUTE stmt;
+                    DEALLOCATE PREPARE stmt;
+                    """);
+            }
+
+            _logger?.LogInformation("Bikiran.Engine: Applied migration to 1.6.0 (time-weighted progress columns).");
         }
     }
 }

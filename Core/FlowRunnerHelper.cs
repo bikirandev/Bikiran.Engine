@@ -72,7 +72,34 @@ internal class FlowRunnerHelper
     // --- FlowRun CRUD ---
 
     /// <summary>
+    /// Saves TotalApproxMs (sum of all main nodes' declared approx times) to the FlowRun record.
+    /// Called once before the main node loop starts.
+    /// </summary>
+    internal async Task InitRunApproxMsAsync(string serviceId, long totalApproxMs)
+    {
+        if (_db == null || _cachedRun == null) return;
+        _cachedRun.TotalApproxMs = totalApproxMs;
+        _cachedRun.TimeUpdated = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        await _db.SaveChangesAsync();
+    }
+
+    /// <summary>
+    /// Sets the current-node approx fields on FlowRun so the progress endpoint can interpolate
+    /// live progress within the currently executing node.
+    /// Called unconditionally just before each node's ExecuteAsync.
+    /// </summary>
+    internal async Task SetCurrentNodeApproxAsync(string serviceId, long approxExecutionMs, long startedAtMs)
+    {
+        if (_db == null || _cachedRun == null) return;
+        _cachedRun.CurrentNodeApproxMs = approxExecutionMs;
+        _cachedRun.CurrentNodeStartedAtMs = startedAtMs;
+        _cachedRun.TimeUpdated = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        await _db.SaveChangesAsync();
+    }
+
+    /// <summary>
     /// Updates the FlowRun status and optional timing/error fields.
+    /// Clears current-node approx fields since the run is no longer active.
     /// Uses the cached entity to avoid a redundant query.
     /// </summary>
     internal async Task UpdateRunStatusAsync(string serviceId, FlowRunStatus status,
@@ -82,6 +109,8 @@ internal class FlowRunnerHelper
 
         _cachedRun.Status = status.ToString().ToLowerInvariant();
         _cachedRun.CurrentProgressMessage = null;
+        _cachedRun.CurrentNodeApproxMs = 0;
+        _cachedRun.CurrentNodeStartedAtMs = 0;
         _cachedRun.TimeUpdated = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
 
         if (startedAt.HasValue) _cachedRun.StartedAt = startedAt.Value;
@@ -93,13 +122,17 @@ internal class FlowRunnerHelper
     }
 
     /// <summary>
-    /// Updates the completed-nodes counter and optionally clears the progress message.
+    /// Updates the completed-nodes counter and time-weighted approx progress,
+    /// then clears the current-node approx fields.
     /// </summary>
-    internal async Task UpdateRunProgressAsync(string serviceId, int completedNodes)
+    internal async Task UpdateRunProgressAsync(string serviceId, int completedNodes, long approxExecutionMs)
     {
         if (_db == null || _cachedRun == null) return;
 
         _cachedRun.CompletedNodes = completedNodes;
+        _cachedRun.CompletedApproxMs += approxExecutionMs;
+        _cachedRun.CurrentNodeApproxMs = 0;
+        _cachedRun.CurrentNodeStartedAtMs = 0;
         _cachedRun.CurrentProgressMessage = null;
         _cachedRun.TimeUpdated = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
         await _db.SaveChangesAsync();
@@ -124,7 +157,7 @@ internal class FlowRunnerHelper
     /// Creates a new FlowNodeLog record with "running" status.
     /// </summary>
     internal async Task CreateNodeLogAsync(string serviceId, IFlowNode node, int sequence,
-        FlowNodeStatus status, long startedAtMs, string inputData)
+        FlowNodeStatus status, long startedAtMs, string inputData, long approxExecutionMs)
     {
         if (_db == null) return;
 
@@ -136,6 +169,7 @@ internal class FlowRunnerHelper
             Sequence = sequence,
             Status = status.ToString().ToLowerInvariant(),
             InputData = inputData,
+            ApproxExecutionMs = approxExecutionMs,
             StartedAt = startedAtMs / 1000,
             TimeCreated = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
             TimeUpdated = DateTimeOffset.UtcNow.ToUnixTimeSeconds()
@@ -150,7 +184,7 @@ internal class FlowRunnerHelper
     /// </summary>
     internal async Task UpdateNodeLogAsync(string serviceId, string nodeName, int sequence,
         FlowNodeStatus status, string? errorMessage, string? branchTaken, int retryCount,
-        long completedAt, long durationMs, string outputData)
+        long completedAt, long durationMs, string outputData, long approxExecutionMs)
     {
         if (_db == null) return;
 
@@ -160,6 +194,7 @@ internal class FlowRunnerHelper
 
         log.Status = status.ToString().ToLowerInvariant();
         log.OutputData = outputData;
+        log.ApproxExecutionMs = approxExecutionMs;
         log.CompletedAt = completedAt;
         log.DurationMs = durationMs;
         log.RetryCount = retryCount;
@@ -252,7 +287,7 @@ internal class FlowRunnerHelper
 
     private static readonly HashSet<string> _skipProperties = new()
     {
-        "Name", "ProgressMessage"
+        "Name", "ProgressMessage", "ApproxExecutionTime"
     };
 
     /// <summary>

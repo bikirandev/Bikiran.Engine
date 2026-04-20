@@ -12,6 +12,9 @@ public class WhileLoopNode : IFlowNode
     /// <inheritdoc />
     public string? ProgressMessage { get; set; }
 
+    /// <inheritdoc />
+    public TimeSpan ApproxExecutionTime { get; set; } = TimeSpan.FromSeconds(1);
+
     /// <summary>Continue iterating while this returns true.</summary>
     public required Func<FlowContext, bool> Condition { get; set; }
 

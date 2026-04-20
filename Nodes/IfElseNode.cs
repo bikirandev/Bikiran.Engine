@@ -13,6 +13,9 @@ public class IfElseNode : IFlowNode
     /// <inheritdoc />
     public string? ProgressMessage { get; set; }
 
+    /// <inheritdoc />
+    public TimeSpan ApproxExecutionTime { get; set; } = TimeSpan.FromSeconds(1);
+
     /// <summary>The condition to evaluate against the current flow context.</summary>
     public required Func<FlowContext, bool> Condition { get; set; }
 

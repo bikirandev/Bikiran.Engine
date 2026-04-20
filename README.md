@@ -16,6 +16,7 @@ Think of it as **n8n or Zapier embedded directly inside your .NET application**,
 - **11 Built-in Node Types** — start/end markers, HTTP requests, emails, conditions, loops, retries, parallel execution, and more
 - **Background Execution** — flows run asynchronously without blocking the caller
 - **Persistent Logging** — every step is recorded in the database with timing and error details
+- **Time-Weighted Progress** — track live progress percentages weighted by each node's declared `ApproxExecutionTime`
 - **Lifecycle Events** — run handlers on success, failure, or always after a flow completes
 - **Reusable JSON Definitions** — save flow templates as JSON and trigger them without redeploying code
 - **Scheduled Execution** — run flows on a cron schedule, at fixed intervals, or at a specific future time

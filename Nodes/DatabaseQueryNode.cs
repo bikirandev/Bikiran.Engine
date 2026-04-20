@@ -14,6 +14,9 @@ public class DatabaseQueryNode<TContext> : IFlowNode where TContext : DbContext
     /// <inheritdoc />
     public string? ProgressMessage { get; set; }
 
+    /// <inheritdoc />
+    public TimeSpan ApproxExecutionTime { get; set; } = TimeSpan.FromSeconds(1);
+
     /// <summary>The EF Core query to execute. Receives the typed DbContext and a CancellationToken.</summary>
     public required Func<TContext, CancellationToken, Task<object?>> Query { get; set; }
 

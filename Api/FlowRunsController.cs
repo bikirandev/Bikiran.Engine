@@ -42,9 +42,7 @@ public class FlowRunsController : ControllerBase
             .OrderBy(l => l.Sequence)
             .ToListAsync();
 
-        var progressPercent = run.TotalNodes > 0
-            ? (int)Math.Round((double)run.CompletedNodes / run.TotalNodes * 100)
-            : 0;
+        var (weightedPercent, livePercent) = ComputeProgress(run);
 
         return Ok(new
         {
@@ -58,7 +56,10 @@ public class FlowRunsController : ControllerBase
                 run.TriggerSource,
                 run.TotalNodes,
                 run.CompletedNodes,
-                progressPercent,
+                run.TotalApproxMs,
+                run.CompletedApproxMs,
+                weightedProgressPercent = weightedPercent,
+                liveProgressPercent = livePercent,
                 run.CurrentProgressMessage,
                 run.DurationMs,
                 run.StartedAt,
@@ -77,11 +78,24 @@ public class FlowRunsController : ControllerBase
         if (run == null)
             return NotFound(new { error = true, message = "Flow run not found" });
 
-        var percent = run.TotalNodes > 0
-            ? (int)Math.Round((double)run.CompletedNodes / run.TotalNodes * 100)
-            : 0;
+        var (weightedPercent, livePercent) = ComputeProgress(run);
 
-        return Ok(new { error = false, data = new { run.ServiceId, run.Status, percent, run.CompletedNodes, run.TotalNodes, run.CurrentProgressMessage } });
+        return Ok(new
+        {
+            error = false,
+            data = new
+            {
+                run.ServiceId,
+                run.Status,
+                run.TotalNodes,
+                run.CompletedNodes,
+                run.TotalApproxMs,
+                run.CompletedApproxMs,
+                weightedProgressPercent = weightedPercent,
+                liveProgressPercent = livePercent,
+                run.CurrentProgressMessage
+            }
+        });
     }
 
     /// <summary>Filter runs by status.</summary>
@@ -111,5 +125,39 @@ public class FlowRunsController : ControllerBase
         await _db.SaveChangesAsync();
 
         return Ok(new { error = false, message = "Flow run deleted" });
+    }
+
+    // --- Helpers ---
+
+    /// <summary>
+    /// Calculates weighted (post-node) and live (intra-node) progress percentages.
+    /// <para>
+    /// Weighted: CompletedApproxMs / TotalApproxMs * 100 — updated after each node finishes.
+    /// Live:     also adds the elapsed portion of the currently executing node, capped at its approx time.
+    /// Falls back to step-count progress when TotalApproxMs is zero.
+    /// </para>
+    /// </summary>
+    private static (double weighted, double live) ComputeProgress(Database.Entities.FlowRun run)
+    {
+        if (run.TotalApproxMs > 0)
+        {
+            var weighted = Math.Min(100.0,
+                Math.Round(run.CompletedApproxMs / (double)run.TotalApproxMs * 100.0, 2));
+
+            var utcNowMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+            var intraNodeMs = run.CurrentNodeStartedAtMs > 0
+                ? Math.Min(utcNowMs - run.CurrentNodeStartedAtMs, run.CurrentNodeApproxMs)
+                : 0L;
+            var live = Math.Min(100.0,
+                Math.Round((run.CompletedApproxMs + intraNodeMs) / (double)run.TotalApproxMs * 100.0, 2));
+
+            return (weighted, live);
+        }
+
+        // Fallback: uniform step-count progress
+        var fallback = run.TotalNodes > 0
+            ? Math.Round((double)run.CompletedNodes / run.TotalNodes * 100.0, 2)
+            : 0.0;
+        return (fallback, fallback);
     }
 }

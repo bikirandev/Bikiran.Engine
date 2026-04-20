@@ -16,6 +16,9 @@ public class EmailSendNode : IFlowNode
     /// <inheritdoc />
     public string? ProgressMessage { get; set; }
 
+    /// <inheritdoc />
+    public TimeSpan ApproxExecutionTime { get; set; } = TimeSpan.FromSeconds(1);
+
     /// <summary>Recipient email address (required).</summary>
     public string ToEmail { get; set; } = "";
 

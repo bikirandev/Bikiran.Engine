@@ -14,6 +14,9 @@ public class ParallelNode : IFlowNode
     /// <inheritdoc />
     public string? ProgressMessage { get; set; }
 
+    /// <inheritdoc />
+    public TimeSpan ApproxExecutionTime { get; set; } = TimeSpan.FromSeconds(1);
+
     /// <summary>
     /// List of branches to run concurrently. Each inner list is one parallel branch.
     /// IMPORTANT: branches share the same FlowContext; each branch must write to unique context keys

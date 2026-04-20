@@ -12,6 +12,9 @@ public class WaitNode : IFlowNode
     /// <inheritdoc />
     public string? ProgressMessage { get; set; }
 
+    /// <inheritdoc />
+    public TimeSpan ApproxExecutionTime { get; set; } = TimeSpan.FromSeconds(1);
+
     /// <summary>Duration to pause in milliseconds. Default is 1000 ms.</summary>
     public int DelayMs { get; set; } = 1000;
 

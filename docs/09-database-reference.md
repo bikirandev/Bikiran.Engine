@@ -34,6 +34,10 @@ Stores one record per workflow execution.
 | `ContextMeta`            | TEXT         | `"{}"`      | JSON snapshot of caller context (IP, user ID, path)         |
 | `TotalNodes`             | INT          | `0`         | Total number of main steps (excludes lifecycle events)      |
 | `CompletedNodes`         | INT          | `0`         | Number of main steps completed so far                       |
+| `TotalApproxMs`          | BIGINT       | `0`         | Sum of all main nodes' `ApproxExecutionTime` in ms          |
+| `CompletedApproxMs`      | BIGINT       | `0`         | Rolling sum of completed nodes' approx times in ms          |
+| `CurrentNodeApproxMs`    | BIGINT       | `0`         | Approx time of the currently executing node in ms (0 idle)  |
+| `CurrentNodeStartedAtMs` | BIGINT       | `0`         | UTC ms timestamp when the current node started (0 idle)     |
 | `ErrorMessage`           | VARCHAR(500) | NULL        | Error details if the flow failed                            |
 | `CurrentProgressMessage` | VARCHAR(500) | NULL        | Progress message from the currently executing node          |
 | `StartedAt`              | BIGINT       | `0`         | Unix timestamp when execution began                         |
@@ -64,6 +68,7 @@ Stores one record per step execution within a run.
 | `ErrorMessage` | VARCHAR(500) | NULL        | Error details if the step failed                          |
 | `BranchTaken`  | VARCHAR(20)  | NULL        | `"true"` or `"false"` for IfElse nodes                    |
 | `RetryCount`   | INT          | `0`         | Number of retries attempted                               |
+| `ApproxExecutionMs` | BIGINT  | `0`         | Declared approx execution time of this node in ms        |
 | `StartedAt`    | BIGINT       | `0`         | Unix timestamp when the step started                      |
 | `CompletedAt`  | BIGINT       | `0`         | Unix timestamp when the step finished                     |
 | `DurationMs`   | BIGINT       | `0`         | Execution time in milliseconds                            |

@@ -39,6 +39,10 @@ public class FlowNodeLog
     public string? BranchTaken { get; set; }
 
     public int RetryCount { get; set; }
+
+    /// <summary>Declared approx execution time of this node in ms (from ApproxExecutionTime property).</summary>
+    public long ApproxExecutionMs { get; set; }
+
     public long StartedAt { get; set; }
     public long CompletedAt { get; set; }
     public long DurationMs { get; set; }

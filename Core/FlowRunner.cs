@@ -35,6 +35,10 @@ internal class FlowRunner
         // Cache the FlowRun entity once to avoid repeated lookups
         await _helper.LoadRunAsync(context.ServiceId);
 
+        // Compute total approx time from main nodes and persist it
+        var totalApproxMs = nodes.Sum(n => (long)n.ApproxExecutionTime.TotalMilliseconds);
+        await _helper.InitRunApproxMsAsync(context.ServiceId, totalApproxMs);
+
         var runStartedAtMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
         await _helper.UpdateRunStatusAsync(context.ServiceId, FlowRunStatus.Running,
             startedAt: runStartedAtMs / 1000);
@@ -93,11 +97,16 @@ internal class FlowRunner
                 var nodeStartedAt = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
                 currentNodeStartedAt = nodeStartedAt;
 
+                var approxMs = (long)node.ApproxExecutionTime.TotalMilliseconds;
+
+                // Persist current-node approx fields for live-progress interpolation
+                await _helper.SetCurrentNodeApproxAsync(context.ServiceId, approxMs, nodeStartedAt);
+
                 if (context.Config.EnableNodeLogging)
                 {
                     await _helper.CreateNodeLogAsync(context.ServiceId, node, sequence,
                         FlowNodeStatus.Running, nodeStartedAt,
-                        FlowRunnerHelper.SerializeNodeInput(node));
+                        FlowRunnerHelper.SerializeNodeInput(node), approxMs);
                     nodeLogCreated = true;
                 }
 
@@ -146,13 +155,14 @@ internal class FlowRunner
                         retryCount,
                         nodeCompletedAt / 1000,
                         durationMs,
-                        FlowRunnerHelper.SafeSerialize(result.Output));
+                        FlowRunnerHelper.SafeSerialize(result.Output),
+                        approxMs);
                 }
 
                 if (result.Success)
                 {
                     completedNodes++;
-                    await _helper.UpdateRunProgressAsync(context.ServiceId, completedNodes);
+                    await _helper.UpdateRunProgressAsync(context.ServiceId, completedNodes, approxMs);
                 }
                 else
                 {
@@ -163,7 +173,7 @@ internal class FlowRunner
                     }
                     // OnFailureAction.Continue: log the failure but keep going
                     completedNodes++;
-                    await _helper.UpdateRunProgressAsync(context.ServiceId, completedNodes);
+                    await _helper.UpdateRunProgressAsync(context.ServiceId, completedNodes, approxMs);
                 }
             }
         }
@@ -241,11 +251,12 @@ internal class FlowRunner
         {
             var node = nodes[i];
             var nodeStartedAt = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+            var approxMs = (long)node.ApproxExecutionTime.TotalMilliseconds;
 
             if (context.Config.EnableNodeLogging)
                 await _helper.CreateNodeLogAsync(context.ServiceId, node, sequence,
                     FlowNodeStatus.Running, nodeStartedAt,
-                    FlowRunnerHelper.SerializeNodeInput(node));
+                    FlowRunnerHelper.SerializeNodeInput(node), approxMs);
 
             NodeResult result;
             try
@@ -279,7 +290,8 @@ internal class FlowRunner
                     retryCount: 0,
                     nodeCompletedAt / 1000,
                     durationMs,
-                    FlowRunnerHelper.SafeSerialize(result.Output));
+                    FlowRunnerHelper.SafeSerialize(result.Output),
+                    approxMs);
             }
 
             sequence++;

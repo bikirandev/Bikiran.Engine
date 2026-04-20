@@ -17,6 +17,9 @@ public class HttpRequestNode : IFlowNode
     /// <inheritdoc />
     public string? ProgressMessage { get; set; }
 
+    /// <inheritdoc />
+    public TimeSpan ApproxExecutionTime { get; set; } = TimeSpan.FromSeconds(1);
+
     /// <summary>Target URL (required).</summary>
     public string Url { get; set; } = "";
 

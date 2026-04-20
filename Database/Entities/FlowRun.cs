@@ -41,6 +41,18 @@ public class FlowRun
     public int TotalNodes { get; set; }
     public int CompletedNodes { get; set; }
 
+    /// <summary>Sum of all main nodes' ApproxExecutionTime in ms.</summary>
+    public long TotalApproxMs { get; set; }
+
+    /// <summary>Rolling sum of completed main nodes' approx execution times in ms.</summary>
+    public long CompletedApproxMs { get; set; }
+
+    /// <summary>Approx execution time of the currently executing node in ms (0 when idle).</summary>
+    public long CurrentNodeApproxMs { get; set; }
+
+    /// <summary>UTC milliseconds when the current node started executing (0 when idle).</summary>
+    public long CurrentNodeStartedAtMs { get; set; }
+
     [MaxLength(500)]
     public string? ErrorMessage { get; set; }
 

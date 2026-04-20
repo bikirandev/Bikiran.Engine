@@ -67,6 +67,34 @@ When the node completes and the flow moves to the next node, the progress messag
 
 ---
 
+## Approx Execution Time
+
+Every node has an `ApproxExecutionTime` property (`TimeSpan`, default `00:00:01`). It declares how long you expect the node to take. The engine uses these values as **weights** to calculate a time-weighted progress percentage that is more accurate than a simple step count.
+
+```csharp
+new HttpRequestNode("FetchOrder") {
+    Url = "https://api.example.com/order/123",
+    ApproxExecutionTime = TimeSpan.FromSeconds(3)  // expected ~3 s for this call
+}
+```
+
+### How progress is calculated
+
+| Mode | Formula | Updated |
+|------|---------|--------|
+| **Weighted** | `CompletedApproxMs / TotalApproxMs * 100` | After each node finishes |
+| **Live** | `(CompletedApproxMs + min(elapsed, CurrentNodeApproxMs)) / TotalApproxMs * 100` | Every time you call the progress endpoint |
+
+Example — three nodes: `A = 2 s`, `B = 5 s`, `C = 3 s` (total 10 s).
+
+- After A completes: weighted = **20 %**, live ≈ **20 %**
+- 2 s into B: live = `(2000 + min(2000, 5000)) / 10000 * 100` = **40 %**
+- After B completes: weighted = **70 %**
+
+When `TotalApproxMs` is zero (all defaults left untouched), the engine falls back to a uniform step-count percentage.
+
+---
+
 ## OutputKey Auto-Generation
 
 Nodes that produce output (HttpRequestNode, DatabaseQueryNode, TransformNode) auto-generate their `OutputKey` as `"{Name}_Result"`. You do not need to set it manually unless you want a custom key.

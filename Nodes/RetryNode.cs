@@ -12,6 +12,9 @@ public class RetryNode : IFlowNode
     /// <inheritdoc />
     public string? ProgressMessage { get; set; }
 
+    /// <inheritdoc />
+    public TimeSpan ApproxExecutionTime { get; set; } = TimeSpan.FromSeconds(1);
+
     /// <summary>The node to wrap and retry.</summary>
     public required IFlowNode Inner { get; set; }
 
