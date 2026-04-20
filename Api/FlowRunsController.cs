@@ -136,7 +136,9 @@ public class FlowRunsController : ControllerBase
     /// Calculates weighted (post-node) and live (intra-node) progress percentages.
     /// <para>
     /// Weighted: CompletedApproxMs / TotalApproxMs * 100 — updated after each node finishes.
-    /// Live:     also adds the elapsed portion of the currently executing node, capped at its approx time.
+    /// Live:     also adds the elapsed portion of the currently executing node.
+    ///           When the node overruns its declared time, the effective total is inflated
+    ///           so that progress keeps moving smoothly instead of freezing.
     /// Falls back to step-count progress when TotalApproxMs is zero.
     /// </para>
     /// </summary>
@@ -148,11 +150,34 @@ public class FlowRunsController : ControllerBase
                 Math.Round(run.CompletedApproxMs / (double)run.TotalApproxMs * 100.0, 2));
 
             var utcNowMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-            var intraNodeMs = run.CurrentNodeStartedAtMs > 0
-                ? Math.Min(utcNowMs - run.CurrentNodeStartedAtMs, run.CurrentNodeApproxMs)
-                : 0L;
+
+            long intraNodeMs;
+            var effectiveTotalApproxMs = run.TotalApproxMs;
+
+            if (run.CurrentNodeStartedAtMs > 0)
+            {
+                var elapsed = utcNowMs - run.CurrentNodeStartedAtMs;
+
+                if (elapsed <= run.CurrentNodeApproxMs)
+                {
+                    // Within budget: linear interpolation
+                    intraNodeMs = elapsed;
+                }
+                else
+                {
+                    // Node overrun: use actual elapsed and inflate the effective total
+                    // so progress keeps moving without causing backward jumps on completion.
+                    intraNodeMs = elapsed;
+                    effectiveTotalApproxMs += (elapsed - run.CurrentNodeApproxMs);
+                }
+            }
+            else
+            {
+                intraNodeMs = 0;
+            }
+
             var live = Math.Min(100.0,
-                Math.Round((run.CompletedApproxMs + intraNodeMs) / (double)run.TotalApproxMs * 100.0, 2));
+                Math.Round((run.CompletedApproxMs + intraNodeMs) / (double)effectiveTotalApproxMs * 100.0, 2));
 
             return (weighted, live);
         }

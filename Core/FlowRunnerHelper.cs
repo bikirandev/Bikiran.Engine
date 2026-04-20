@@ -124,13 +124,29 @@ internal class FlowRunnerHelper
     /// <summary>
     /// Updates the completed-nodes counter and time-weighted approx progress,
     /// then clears the current-node approx fields.
+    /// When a node's actual duration exceeds its declared approx, both CompletedApproxMs
+    /// and TotalApproxMs are adjusted so that live progress never jumps backward.
     /// </summary>
-    internal async Task UpdateRunProgressAsync(string serviceId, int completedNodes, long approxExecutionMs)
+    internal async Task UpdateRunProgressAsync(string serviceId, int completedNodes,
+        long approxExecutionMs, long actualDurationMs)
     {
         if (_db == null || _cachedRun == null) return;
 
         _cachedRun.CompletedNodes = completedNodes;
-        _cachedRun.CompletedApproxMs += approxExecutionMs;
+
+        if (actualDurationMs > approxExecutionMs)
+        {
+            // Node overran its declared time — credit the actual duration and stretch
+            // the total budget so previously-shown live progress stays consistent.
+            var overrun = actualDurationMs - approxExecutionMs;
+            _cachedRun.CompletedApproxMs += actualDurationMs;
+            _cachedRun.TotalApproxMs += overrun;
+        }
+        else
+        {
+            _cachedRun.CompletedApproxMs += approxExecutionMs;
+        }
+
         _cachedRun.CurrentNodeApproxMs = 0;
         _cachedRun.CurrentNodeStartedAtMs = 0;
         _cachedRun.CurrentProgressMessage = null;

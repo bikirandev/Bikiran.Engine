@@ -71,13 +71,13 @@ When you call `.StartAsync()` or `.StartAndWaitAsync()`, the engine validates th
 
 **What is validated:**
 
-| Check                     | Error Example                                                                 |
-| ------------------------- | ----------------------------------------------------------------------------- |
-| Flow name is not empty    | *"Flow name is required. Pass a non-empty name to FlowBuilder.Create(...)."* |
-| At least one node exists  | *"Flow 'my_flow' has no nodes. Add at least one node with .AddNode()..."*    |
-| MaxExecutionTime > 0      | *"Flow 'my_flow': MaxExecutionTime must be a positive duration..."*          |
-| All node names are valid  | *"Flow 'my_flow', main phase: Node name 'bad name' must be PascalCase..."*   |
-| No duplicate node names   | *"Flow 'my_flow': Duplicate node name 'FetchOrder' found..."*               |
+| Check                    | Error Example                                                                |
+| ------------------------ | ---------------------------------------------------------------------------- |
+| Flow name is not empty   | _"Flow name is required. Pass a non-empty name to FlowBuilder.Create(...)."_ |
+| At least one node exists | _"Flow 'my_flow' has no nodes. Add at least one node with .AddNode()..."_    |
+| MaxExecutionTime > 0     | _"Flow 'my_flow': MaxExecutionTime must be a positive duration..."_          |
+| All node names are valid | _"Flow 'my_flow', main phase: Node name 'bad name' must be PascalCase..."_   |
+| No duplicate node names  | _"Flow 'my_flow': Duplicate node name 'FetchOrder' found..."_                |
 
 This validation runs across all phases: main nodes, OnSuccess, OnFail, and OnFinish.
 
@@ -254,6 +254,7 @@ Since `OnFinish` runs regardless of the outcome, you can check what happened usi
    - The step's `ExecuteAsync` method runs.
    - The NodeLog is updated (status = completed or failed).
    - On success, the progress counter increments. On failure with **Continue** strategy, the counter also increments. On failure with **Stop** strategy, the flow aborts without incrementing.
+   - If a step takes longer than its declared `ApproxExecutionTime`, the engine adjusts both `CompletedApproxMs` and `TotalApproxMs` so that progress never jumps backward.
    - If a step fails: **Stop** aborts the flow, **Continue** skips to the next step.
 5. The flow's status and error (if any) are saved to the context.
 6. The final status is committed to the database.

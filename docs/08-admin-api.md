@@ -208,8 +208,10 @@ Get the current progress of a running (or completed) flow.
 ```
 
 **Field notes:**
+
 - `weightedProgressPercent` — updated after each node completes; based on declared `ApproxExecutionTime` weights.
-- `liveProgressPercent` — interpolated in real time using elapsed ms within the current node; never exceeds the node's approx time contribution.
+- `liveProgressPercent` — interpolated in real time using elapsed ms within the current node. When a node overruns its declared approx time, the effective total is inflated so that progress keeps moving smoothly instead of freezing.
+- When a node completes and its actual duration exceeds its declared `ApproxExecutionTime`, both `CompletedApproxMs` and `TotalApproxMs` are adjusted so that progress never jumps backward.
 - Both fields fall back to uniform step-count progress when all nodes use the default `ApproxExecutionTime`.
 - `currentTime` — server UTC timestamp (Unix milliseconds) at the moment the response was generated. Useful for computing elapsed time on the client without clock-skew issues.
 - `flowStartedAt` — UTC Unix milliseconds when the flow execution began (`FlowRun.StartedAt`). Returns `0` for runs that have not yet moved past the `pending` state.

@@ -162,7 +162,7 @@ internal class FlowRunner
                 if (result.Success)
                 {
                     completedNodes++;
-                    await _helper.UpdateRunProgressAsync(context.ServiceId, completedNodes, approxMs);
+                    await _helper.UpdateRunProgressAsync(context.ServiceId, completedNodes, approxMs, durationMs);
                 }
                 else
                 {
@@ -173,7 +173,7 @@ internal class FlowRunner
                     }
                     // OnFailureAction.Continue: log the failure but keep going
                     completedNodes++;
-                    await _helper.UpdateRunProgressAsync(context.ServiceId, completedNodes, approxMs);
+                    await _helper.UpdateRunProgressAsync(context.ServiceId, completedNodes, approxMs, durationMs);
                 }
             }
         }
