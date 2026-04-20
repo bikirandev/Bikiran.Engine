@@ -65,7 +65,7 @@ Here is a simple two-step flow that pauses for one second, then makes an HTTP ca
 ```csharp
 var serviceId = await FlowBuilder
     .Create("my_first_flow")
-    .AddNode(new WaitNode("pause") { DelayMs = 1000 })
+    .Wait("Pausing briefly", TimeSpan.FromSeconds(1))
     .AddNode(new HttpRequestNode("call_api") {
         Url = "https://httpbin.org/get",
         OutputKey = "api_response"

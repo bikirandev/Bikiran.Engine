@@ -66,7 +66,7 @@ That's it. On first startup, all required database tables are created automatica
 var serviceId = await FlowBuilder
     .Create("my_first_flow")
     .StartingNode("Flow is starting")
-    .AddNode(new WaitNode("pause") { DelayMs = 1000 })
+    .Wait("Pausing briefly", TimeSpan.FromSeconds(1))
     .AddNode(new HttpRequestNode("call_api") {
         Url = "https://httpbin.org/get",
         OutputKey = "api_response"

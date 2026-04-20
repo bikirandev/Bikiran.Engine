@@ -19,6 +19,7 @@ public class FlowBuilder
     private readonly List<IFlowNode> _onFinishNodes = new();
     private FlowConfig _config = new();
     private Action<FlowContext>? _contextSetup;
+    private int _waitNodeCounter;
 
     // Credentials registry — set by BikiranEngineOptions and injected at startup
     internal static Dictionary<string, IEngineCredential> RegisteredCredentials { get; set; } = new();
@@ -73,6 +74,21 @@ public class FlowBuilder
     public FlowBuilder EndingNode(string progressMessage = "Flow completed.")
     {
         return AddNode(new Nodes.EndingNode { ProgressMessage = progressMessage });
+    }
+
+    /// <summary>
+    /// Adds a <see cref="Bikiran.Engine.Nodes.WaitNode"/> that pauses for the given duration.
+    /// </summary>
+    /// <param name="progressMessage">Progress message shown while waiting.</param>
+    /// <param name="delay">How long to pause.</param>
+    public FlowBuilder Wait(string progressMessage, TimeSpan delay)
+    {
+        _waitNodeCounter++;
+        return AddNode(new Nodes.WaitNode($"Wait{_waitNodeCounter}")
+        {
+            ProgressMessage = progressMessage,
+            Delay = delay
+        });
     }
 
     /// <summary>Adds a node that runs only when all main nodes complete successfully.</summary>

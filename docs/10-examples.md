@@ -60,7 +60,7 @@ var serviceId = await FlowBuilder
             }
         ],
         FalseBranch = [
-            new WaitNode("Placeholder") { DelayMs = 100 }
+            new WaitNode("Placeholder") { Delay = TimeSpan.FromMilliseconds(100) }
         ]
     })
     .StartAsync();
@@ -271,7 +271,7 @@ var serviceId = await FlowBuilder
         Body = "{\"type\":\"A\",\"name\":\"app.example.com\",\"content\":\"1.2.3.4\"}",
         OutputKey = "dns_result"
     })
-    .AddNode(new WaitNode("wait_for_dns") { DelayMs = 15000 })
+    .Wait("Waiting for DNS propagation", TimeSpan.FromSeconds(15))
     .AddNode(new HttpRequestNode("verify_dns") {
         Url = "https://dns.google/resolve?name=app.example.com&type=A",
         Method = HttpMethod.Get,
@@ -336,7 +336,7 @@ public async Task<ActionResult> TestFlow()
         .WithContext(ctx => {
             ctx.HttpContext = HttpContext;
         })
-        .AddNode(new WaitNode("initial_wait") { DelayMs = 500 })
+        .Wait("Initial wait", TimeSpan.FromMilliseconds(500))
         .AddNode(new HttpRequestNode("check_api") {
             Url = "https://httpbin.org/get",
             Method = HttpMethod.Get,

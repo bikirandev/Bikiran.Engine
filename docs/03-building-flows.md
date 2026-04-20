@@ -11,7 +11,7 @@ var serviceId = await FlowBuilder
     .Create("flow_name")                                   // 1. Name the flow
     .Configure(cfg => { /* runtime settings */ })           // 2. Set timeout, failure handling, etc.
     .WithContext(ctx => { /* provide services */ })          // 3. Provide HTTP context, logger, etc.
-    .AddNode(new WaitNode("Step1") { DelayMs = 500 })       // 4. Add steps in order (PascalCase names)
+    .Wait("Pausing briefly", TimeSpan.FromMilliseconds(500))  // 4. Add steps in order
     .AddNode(new HttpRequestNode("Step2") { /* ... */ })
     .StartAsync();                                          // 5. Start and get the run ID
 ```
@@ -26,6 +26,9 @@ var serviceId = await FlowBuilder
 | `.Configure(action)`       | No                 | Sets runtime options like timeout and failure strategy                   |
 | `.WithContext(action)`     | No                 | Provides services (HTTP context, logger) to the flow                     |
 | `.AddNode(node)`           | Yes (at least one) | Adds a step to the execution sequence                                    |
+| `.StartingNode(message)`   | No                 | Adds a starting marker node with an optional pause                       |
+| `.EndingNode(message)`     | No                 | Adds an ending marker node                                               |
+| `.Wait(message, delay)`    | No                 | Adds a wait step that pauses for the given `TimeSpan`                    |
 | `.OnSuccess(node)`         | No                 | Adds a step that runs only when all main steps succeed                   |
 | `.OnFail(node)`            | No                 | Adds a step that runs only when the flow fails                           |
 | `.OnFinish(node)`          | No                 | Adds a step that always runs after success/fail handlers                 |
@@ -187,7 +190,7 @@ var serviceId = await FlowBuilder
     .Create("provision_domain")
     .AddNode(new HttpRequestNode("AddDns") { /* ... */ })
     .AddNode(new WaitNode("PropagationDelay") {
-        DelayMs = 15000,
+        Delay = TimeSpan.FromSeconds(15),
         ProgressMessage = "Waiting for DNS propagation"
     })
     .OnSuccess(new HttpRequestNode("NotifySuccess") {

@@ -3,7 +3,7 @@ using Bikiran.Engine.Core;
 namespace Bikiran.Engine.Nodes;
 
 /// <summary>
-/// Pauses flow execution for a configured number of milliseconds.
+/// Pauses flow execution for a configured duration.
 /// </summary>
 public class WaitNode : IFlowNode
 {
@@ -15,8 +15,18 @@ public class WaitNode : IFlowNode
     /// <inheritdoc />
     public TimeSpan ApproxExecutionTime { get; set; } = TimeSpan.FromSeconds(1);
 
-    /// <summary>Duration to pause in milliseconds. Default is 1000 ms.</summary>
-    public int DelayMs { get; set; } = 1000;
+    private TimeSpan _delay = TimeSpan.FromSeconds(1);
+
+    /// <summary>Duration to pause. Default is 1 second. Also sets <see cref="ApproxExecutionTime"/>.</summary>
+    public TimeSpan Delay
+    {
+        get => _delay;
+        set
+        {
+            _delay = value;
+            ApproxExecutionTime = value;
+        }
+    }
 
     public WaitNode(string name)
     {
@@ -26,7 +36,7 @@ public class WaitNode : IFlowNode
 
     public async Task<NodeResult> ExecuteAsync(FlowContext context, CancellationToken cancellationToken)
     {
-        await Task.Delay(DelayMs, cancellationToken);
-        return NodeResult.Ok($"Waited {DelayMs}ms");
+        await Task.Delay(Delay, cancellationToken);
+        return NodeResult.Ok($"Waited {Delay.TotalMilliseconds}ms");
     }
 }

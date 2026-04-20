@@ -122,7 +122,7 @@ public class FlowDefinitionParser
     {
         var node = new WaitNode(name);
         if (p.HasValue && p.Value.TryGetProperty("delayMs", out var delay))
-            node.DelayMs = delay.GetInt32();
+            node.Delay = TimeSpan.FromMilliseconds(delay.GetInt32());
         return node;
     }
 
@@ -253,7 +253,7 @@ public class FlowDefinitionParser
 
         var node = new RetryNode(name)
         {
-            Inner = inner ?? new WaitNode(name + "_noop") { DelayMs = 0 }
+            Inner = inner ?? new WaitNode(name + "_noop") { Delay = TimeSpan.Zero }
         };
 
         if (p.HasValue)

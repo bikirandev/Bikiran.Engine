@@ -56,7 +56,7 @@ Every node has an optional `ProgressMessage` property. When set, this message is
 
 ```csharp
 new WaitNode("DnsPropagation") {
-    DelayMs = 30000,
+    Delay = TimeSpan.FromSeconds(30),
     ProgressMessage = "Waiting for DNS propagation"
 }
 ```
@@ -194,12 +194,12 @@ Pauses the flow for a specified number of milliseconds.
 | ---------------- | ------ | -------- | -------------------- |
 | `Name`           | string | required | Step name (PascalCase) |
 | `ProgressMessage`| string?| null     | Progress message shown during execution |
-| `DelayMs`        | int    | `1000`   | Milliseconds to wait |
+| `Delay`          | TimeSpan | `1s`     | Duration to wait     |
 
 **Example:**
 
 ```csharp
-new WaitNode("PauseBeforeRetry") { DelayMs = 3000 }
+new WaitNode("PauseBeforeRetry") { Delay = TimeSpan.FromSeconds(3) }
 ```
 
 ---
@@ -359,7 +359,7 @@ new IfElseNode("CheckStatus") {
         new EmailSendNode("SendConfirmation") { /* ... */ }
     ],
     FalseBranch = [
-        new WaitNode("WaitAndRetry") { DelayMs = 5000 }
+        new WaitNode("WaitAndRetry") { Delay = TimeSpan.FromSeconds(5) }
     ]
 }
 ```
@@ -397,7 +397,7 @@ new WhileLoopNode("PollStatus") {
         new HttpRequestNode("CheckStatus") {
             Url = "https://api.example.com/status"
         },
-        new WaitNode("PollDelay") { DelayMs = 5000 }
+        new WaitNode("PollDelay") { Delay = TimeSpan.FromSeconds(5) }
     ],
     MaxIterations = 12
 }
