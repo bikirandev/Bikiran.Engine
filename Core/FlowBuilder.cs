@@ -81,7 +81,7 @@ public class FlowBuilder
     /// </summary>
     /// <param name="progressMessage">Progress message shown while waiting.</param>
     /// <param name="delay">How long to pause.</param>
-    public FlowBuilder Wait(string progressMessage, TimeSpan delay)
+    public FlowBuilder WaitingNode(string progressMessage, TimeSpan delay)
     {
         _waitNodeCounter++;
         return AddNode(new Nodes.WaitNode($"Wait{_waitNodeCounter}")
