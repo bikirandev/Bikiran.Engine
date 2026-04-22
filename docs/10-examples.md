@@ -271,7 +271,7 @@ var serviceId = await FlowBuilder
         Body = "{\"type\":\"A\",\"name\":\"app.example.com\",\"content\":\"1.2.3.4\"}",
         OutputKey = "dns_result"
     })
-    .Wait("Waiting for DNS propagation", TimeSpan.FromSeconds(15))
+    .WaitingNode("Waiting for DNS propagation", TimeSpan.FromSeconds(15))
     .AddNode(new HttpRequestNode("verify_dns") {
         Url = "https://dns.google/resolve?name=app.example.com&type=A",
         Method = HttpMethod.Get,
@@ -336,7 +336,7 @@ public async Task<ActionResult> TestFlow()
         .WithContext(ctx => {
             ctx.HttpContext = HttpContext;
         })
-        .Wait("Initial wait", TimeSpan.FromMilliseconds(500))
+        .WaitingNode("Initial wait", TimeSpan.FromMilliseconds(500))
         .AddNode(new HttpRequestNode("check_api") {
             Url = "https://httpbin.org/get",
             Method = HttpMethod.Get,

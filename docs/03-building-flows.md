@@ -11,7 +11,7 @@ var serviceId = await FlowBuilder
     .Create("flow_name")                                   // 1. Name the flow
     .Configure(cfg => { /* runtime settings */ })           // 2. Set timeout, failure handling, etc.
     .WithContext(ctx => { /* provide services */ })          // 3. Provide HTTP context, logger, etc.
-    .Wait("Pausing briefly", TimeSpan.FromMilliseconds(500))  // 4. Add steps in order
+    .WaitingNode("Pausing briefly", TimeSpan.FromMilliseconds(500))  // 4. Add steps in order
     .AddNode(new HttpRequestNode("Step2") { /* ... */ })
     .StartAsync();                                          // 5. Start and get the run ID
 ```
@@ -28,7 +28,7 @@ var serviceId = await FlowBuilder
 | `.AddNode(node)`           | Yes (at least one) | Adds a step to the execution sequence                                    |
 | `.StartingNode(message)`   | No                 | Adds a starting marker node with an optional pause                       |
 | `.EndingNode(message)`     | No                 | Adds an ending marker node                                               |
-| `.Wait(message, delay)`    | No                 | Adds a wait step that pauses for the given `TimeSpan`                    |
+| `.WaitingNode(message, delay)` | No                 | Adds a wait step that pauses for the given `TimeSpan`                    |
 | `.OnSuccess(node)`         | No                 | Adds a step that runs only when all main steps succeed                   |
 | `.OnFail(node)`            | No                 | Adds a step that runs only when the flow fails                           |
 | `.OnFinish(node)`          | No                 | Adds a step that always runs after success/fail handlers                 |

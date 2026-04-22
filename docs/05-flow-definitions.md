@@ -78,6 +78,8 @@ The `FlowJson` field contains a structured JSON object with the flow name, confi
 
 | JSON Type     | Maps To         | Description                                         |
 | ------------- | --------------- | --------------------------------------------------- |
+| `Starting`    | StartingNode    | Mark the start of a flow with an optional pause     |
+| `Ending`      | EndingNode      | Mark the successful end of a flow                   |
 | `Wait`        | WaitNode        | Pause execution for a given delay                   |
 | `HttpRequest` | HttpRequestNode | Make HTTP calls with retry, headers, and validation |
 | `EmailSend`   | EmailSendNode   | Send email via SMTP using registered credentials    |
@@ -88,6 +90,44 @@ The `FlowJson` field contains a structured JSON object with the flow name, confi
 | `WhileLoop`   | WhileLoopNode   | Repeat steps while a condition remains true         |
 
 > `DatabaseQueryNode` cannot be used in JSON because it requires a typed EF Core delegate. Use code-defined flows for database queries.
+
+---
+
+## Marker Nodes in JSON
+
+### Starting
+
+Marks the beginning of a flow with an optional pause:
+
+```json
+{
+  "type": "Starting",
+  "name": "StartingNode",
+  "params": {
+    "waitTimeMs": 1000,
+    "progressMessage": "Flow is starting"
+  }
+}
+```
+
+| Param           | Type | Description                                          |
+| --------------- | ---- | ---------------------------------------------------- |
+| `waitTimeMs`    | int  | Milliseconds to pause before proceeding (default: 0) |
+| `progressMessage` | string | Progress message shown during execution            |
+
+### Ending
+
+Marks the successful completion of a flow. Takes no parameters:
+
+```json
+{
+  "type": "Ending",
+  "name": "EndingNode",
+  "params": {
+    "progressMessage": "Flow completed."
+  }
+}
+```
 
 ---
 

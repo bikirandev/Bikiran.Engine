@@ -15,7 +15,7 @@ dotnet add package Bikiran.Engine
 The single package includes everything you need:
 
 - Builder API and execution engine
-- All 9 built-in node types
+- All 11 built-in node types
 - Database persistence and automatic migration
 - Flow definitions and scheduling (powered by Quartz.NET)
 - Admin API endpoints
@@ -65,7 +65,7 @@ Here is a simple two-step flow that pauses for one second, then makes an HTTP ca
 ```csharp
 var serviceId = await FlowBuilder
     .Create("my_first_flow")
-    .Wait("Pausing briefly", TimeSpan.FromSeconds(1))
+    .WaitingNode("Pausing briefly", TimeSpan.FromSeconds(1))
     .AddNode(new HttpRequestNode("call_api") {
         Url = "https://httpbin.org/get",
         OutputKey = "api_response"

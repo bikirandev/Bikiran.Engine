@@ -84,6 +84,8 @@ public class FlowDefinitionParser
 
         var node = type switch
         {
+            "Starting" => (IFlowNode)BuildStartingNode(name, paramsEl),
+            "Ending" => BuildEndingNode(name, paramsEl),
             "Wait" => BuildWaitNode(name, paramsEl),
             "HttpRequest" => BuildHttpRequestNode(name, paramsEl),
             "EmailSend" => BuildEmailSendNode(name, paramsEl),
@@ -116,6 +118,19 @@ public class FlowDefinitionParser
                 nodes.Add(node);
         }
         return nodes;
+    }
+
+    private static StartingNode BuildStartingNode(string name, JsonElement? p)
+    {
+        var node = new StartingNode(string.IsNullOrEmpty(name) ? "StartingNode" : name);
+        if (p.HasValue && p.Value.TryGetProperty("waitTimeMs", out var wt))
+            node.WaitTime = TimeSpan.FromMilliseconds(wt.GetInt32());
+        return node;
+    }
+
+    private static EndingNode BuildEndingNode(string name, JsonElement? p)
+    {
+        return new EndingNode(string.IsNullOrEmpty(name) ? "EndingNode" : name);
     }
 
     private static WaitNode BuildWaitNode(string name, JsonElement? p)

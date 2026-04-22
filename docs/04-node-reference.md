@@ -83,13 +83,16 @@ new HttpRequestNode("FetchOrder") {
 | Mode | Formula | Updated |
 |------|---------|--------|
 | **Weighted** | `CompletedApproxMs / TotalApproxMs * 100` | After each node finishes |
-| **Live** | `(CompletedApproxMs + min(elapsed, CurrentNodeApproxMs)) / TotalApproxMs * 100` | Every time you call the progress endpoint |
+| **Live** | `(CompletedApproxMs + elapsed) / effectiveTotalApproxMs * 100` | Every time you call the progress endpoint |
+
+The **live** mode interpolates progress in real time using the elapsed milliseconds within the current node. When a node runs within its declared `ApproxExecutionTime`, the denominator stays fixed. When a node **overruns** its declared time, the effective total is inflated by the overrun amount so that progress keeps moving smoothly rather than freezing at a percentage.
 
 Example — three nodes: `A = 2 s`, `B = 5 s`, `C = 3 s` (total 10 s).
 
 - After A completes: weighted = **20 %**, live ≈ **20 %**
-- 2 s into B: live = `(2000 + min(2000, 5000)) / 10000 * 100` = **40 %**
+- 2 s into B: live = `(2000 + 2000) / 10000 * 100` = **40 %**
 - After B completes: weighted = **70 %**
+- If B took 7 s instead of 5 s: `effectiveTotalApproxMs` grows to 12 000 ms so progress never stalls or jumps backward.
 
 When `TotalApproxMs` is zero (all defaults left untouched), the engine falls back to a uniform step-count percentage.
 
@@ -186,7 +189,7 @@ new EndingNode { ProgressMessage = "All done." }
 
 ## WaitNode
 
-Pauses the flow for a specified number of milliseconds.
+Pauses the flow for a configured duration (`TimeSpan`).
 
 **Properties:**
 
